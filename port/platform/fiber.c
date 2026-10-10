@@ -14,18 +14,26 @@
 #include "diag_host.h"
 #include "fiber.h"
 
-#if defined(_WIN32)
+/*
+ * The Vita's userland does not expose POSIX mmap/mprotect. Keep the
+ * assembly context switch on ARM EABI, but use the plain allocator there
+ * until a Vita-specific guarded stack allocator is implemented and tested.
+ * Desktop POSIX and Windows builds retain their guard-page allocator.
+ */
+#if (defined(MCO_USE_ASM) || defined(MCO_USE_UCONTEXT)) && \
+    (defined(_WIN32) || defined(__unix__) || defined(__APPLE__)) && \
+    !defined(__vita__) && !defined(ICO_VITA_TARGET)
+#define ICO_FIBER_GUARD 1
+#endif
+
+#if defined(_WIN32) && defined(ICO_FIBER_GUARD)
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-
 #include <windows.h>
-
-#else
-
+#elif defined(ICO_FIBER_GUARD)
 #include <sys/mman.h>
 #include <unistd.h>
-
 #endif
 #if defined(__SANITIZE_ADDRESS__)
 #define ICO_FIBER_ASAN 1
@@ -56,9 +64,6 @@ struct IcoFiber {
  * storage area is the page under the stack and becomes the guard page.
  * The Windows fiber backend allocates its stacks itself (CreateFiberEx).
  */
-#if defined(MCO_USE_ASM) || defined(MCO_USE_UCONTEXT)
-#define ICO_FIBER_GUARD 1
-#endif
 #ifdef ICO_FIBER_GUARD
 
 static size_t page_size(void)

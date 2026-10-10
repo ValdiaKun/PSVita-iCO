@@ -149,7 +149,7 @@ Vita game build:
 - This smoke-test VPK contains only a `main` that returns immediately; it does
   not compile ICO sources or demonstrate graphics, input, audio or game startup.
 
-**Latest verified CI (run 38026705771, commit 9145a26):** all three jobs passed: the VitaSDK probe, bit-exact host softdouble regression, and the full 214-unit game-source audit. The SDK job additionally compiles `host_config.c` with `-Wall -Wextra -Werror` and checks every listed platform object is ELF32/ARM. This remains a compile audit, not a full application link.
+**Latest verified CI before fiber/scheduler coverage (run 38027247903, commit 102da244):** all three jobs passed: the VitaSDK probe, bit-exact host softdouble regression, and the full 214-unit game-source audit. The SDK job compiles the portable modules, 23 CPU-side renderer/support units, and selected platform services, and structurally validates a minimal probe VPK. The VPK is not an ICO build. The current change extends that coverage to `fiber.c` and `sched.c`.
 
 ### Gate 2 — Game-code compile audit
 
@@ -161,7 +161,7 @@ Vita game build:
 - Do not stub required game behavior merely to make a build green.
 
 
-- **Newly isolated platform blocker:** `port/platform/fiber.c` still uses POSIX `mmap`/`mprotect`/`munmap` and `sysconf(_SC_PAGESIZE)` outside its Windows branch. The VitaSDK audit currently does not compile this file. A Vita adaptation must replace allocation/free with Vita memblocks and explicitly decide how to handle the guard page; simply disabling the guard without preserving stack layout and allocation ownership would be unsafe. `sched.c` depends on this fiber implementation, so this is a high-priority blocker before the scheduler can be considered Vita-ready.
+- **Fiber/scheduler cross-compile gate (added in the current branch):** `fiber.c` selects minicoro's ARM EABI assembly context switch, but its guard-page allocator depends on POSIX virtual-memory APIs that are not part of Vita's userland contract. On Vita, the implementation now keeps the ARM assembly switch and explicitly uses its existing zeroed `calloc`/`free` stack allocator; desktop POSIX and Windows retain guarded stacks. This avoids compiling or linking unsupported VM calls, but intentionally gives up the guard page on Vita. The CI toolchain job now compiles both `fiber.c` (with `ICO_VITA_TARGET=1` to exercise this branch) and `sched.c` under strict warnings. Passing that compile gate will establish source/ABI compatibility only; scheduler switching and stack behavior still require runtime tests on the Vita or a suitable emulator.
 
 ### Gate 3 — Platform services
 
@@ -193,10 +193,11 @@ the host, and small on-device smoke tests for Vita-specific calls.
 
 ## Immediate next action
 
-The 214 game-source units and 23 CPU-side renderer/support units now compile for
-ARMv7 in CI, and the SDK smoke VPK is structurally valid. The next blocker is
-GPU/API compatibility: prototype a Vita-supported textured triangle and test
-the required integer target, depth/stencil, and shader path before attempting
-full renderer integration. The platform lifecycle, controller adapter, audio
-sink, and ICO game link are still outstanding; the smoke VPK is not an ICO
-game build.
+The 214 game-source units and 23 CPU-side renderer/support units compile for
+ARMv7 in CI, and the SDK smoke VPK is structurally valid. The fiber/scheduler
+compile gate is now being added because the previous audit omitted the actual
+context-switch implementation. After that gate passes, the next high-value
+blocker is still a Vita-supported textured-triangle prototype and tests of the
+required integer target, depth/stencil, and shader path. The platform lifecycle,
+controller adapter, audio sink, and ICO game link are outstanding; the smoke
+VPK is not an ICO game build.

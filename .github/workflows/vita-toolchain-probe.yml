@@ -278,10 +278,17 @@ jobs:
           set -euo pipefail
           cc="$VITASDK/bin/arm-vita-eabi-gcc"
           root="$GITHUB_WORKSPACE"
-          for source in arena.c pace_policy.c hotkeys.c host_fs.c host_config.c fpenv.c clock.c hwregs.c vsync_hooks.c; do
+          for source in arena.c pace_policy.c hotkeys.c host_fs.c host_config.c fpenv.c clock.c hwregs.c vsync_hooks.c fiber.c sched.c; do
             object="$RUNNER_TEMP/ico_platform_${source%.c}_vita.o"
+            extra_flags=()
+            if [[ "$source" == "fiber.c" ]]; then
+              # Exercise the Vita allocator selection even if the compiler
+              # version does not expose __vita__ as a predefined macro.
+              extra_flags+=(-DICO_VITA_TARGET=1)
+            fi
             "$cc" -std=gnu11 -Wall -Wextra -Werror -O2 \
               -fno-strict-aliasing -ffp-contract=off -fno-fast-math \
+              "${extra_flags[@]}" \
               -I "$root/port/platform" \
               -I "$root/port/compat" \
               -c "$root/port/platform/$source" -o "$object"
