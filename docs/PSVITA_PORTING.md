@@ -50,13 +50,18 @@ Vita game build:
 - **Audio:** `port/audio/CMakeLists.txt` separates the software SPU2 and
   ADPCM/mixing logic from the SDL output sink (`out_sdl.c`). A Vita audio sink
   and lifecycle integration are still required.
-- **Measured ARMv7 scope:** the CI probe cross-compiles `port/math/ps2float.c`,
+- **Cross-compile audit scope:** the VitaSDK CI probe compiles `port/math/ps2float.c`,
   the portable SPU2 core (`adpcm.c`, `spu2.c`, `spu2_sd.c`, `spu2_tables.c`,
-  `volume.c`, `mix_gain.c`), and the math implementation units (`cloth.c`,
-  `libvu0.c`, `matrix.c`, `matrix_drive.c`, `matrix_stack.c`, `quaternion.c`,
-  `softdouble.c`) with `-Wall -Wextra -Werror`; each resulting object is checked
-  for ELF32/ARM. This verifies those translation units only; it is not a
-  game-wide compile audit or a linked executable.
+  `volume.c`, `mix_gain.c`), seven additional math units, and selected portable
+  input units with strict warnings; every produced object is checked for
+  ELF32/ARM. The audit does not compile/link the complete game.
+- **ARMv7 blocker found and addressed, verification pending:** the first expanded
+  math audit failed in `port/math/softdouble.c` because ARMv7 GCC 15.2 rejects
+  `unsigned __int128`. Multiplication now uses explicit 32-bit limbs to produce
+  a 128-bit result, and division uses restoring quotient generation with a
+  bounded 64-bit remainder. A host bit-exact oracle regression job was added;
+  its result and the new VitaSDK run must pass before treating this fix as
+  verified.
 
 ## Feasibility risks to measure early
 
