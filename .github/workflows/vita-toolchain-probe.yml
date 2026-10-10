@@ -353,6 +353,54 @@ jobs:
             printf 'Verified ARMv7 platform service object: %s\n' "$object"
           done
 
+  vitagl-renderer-probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    container:
+      image: vitasdk/vitasdk:2026.08
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch pinned vitaGL source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/Rinnegatamante/vitaGL.git "$RUNNER_TEMP/vitaGL"
+          git -C "$RUNNER_TEMP/vitaGL" checkout dca4b9d143290d78ec043131a19be36c78cdc7b5
+          test "$(git -C "$RUNNER_TEMP/vitaGL" rev-parse HEAD)" = "dca4b9d143290d78ec043131a19be36c78cdc7b5"
+
+      - name: Build and install pinned vitaGL library
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -C "$RUNNER_TEMP/vitaGL" install -j2
+          test -s "$VITASDK/arm-vita-eabi/lib/libvitaGL.a"
+          test -s "$VITASDK/arm-vita-eabi/include/vitaGL.h"
+
+      - name: Build real OpenGL draw sample into a VPK
+        shell: bash
+        run: |
+          set -euo pipefail
+          sample="$RUNNER_TEMP/vitaGL/samples/immediate_mode"
+          make -C "$sample" -j2
+          vpk="$sample/immediate_mode.vpk"
+          test -s "$vpk"
+          listing="$(unzip -Z1 "$vpk")"
+          printf '%s\n' "$listing"
+          grep -qx 'eboot.bin' <<< "$listing"
+          grep -qx 'sce_sys/param.sfo' <<< "$listing"
+          mkdir -p "$RUNNER_TEMP/vitaGL-artifact"
+          cp "$vpk" "$RUNNER_TEMP/vitaGL-artifact/vitaGL-immediate-mode-probe.vpk"
+          sha256sum "$RUNNER_TEMP/vitaGL-artifact/vitaGL-immediate-mode-probe.vpk"
+
+      - name: Upload vitaGL graphics feasibility package
+        uses: actions/upload-artifact@v4
+        with:
+          name: vitaGL-immediate-mode-probe-vpk
+          path: ${{ runner.temp }}/vitaGL-artifact/vitaGL-immediate-mode-probe.vpk
+          if-no-files-found: error
+          retention-days: 7
+
   diagnostics-portability-audit:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
