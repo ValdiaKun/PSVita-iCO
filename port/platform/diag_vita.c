@@ -91,7 +91,12 @@ void ico_diag_milestone(const char *fmt, ...)
     va_start(ap, fmt);
     vsnprintf(message, sizeof message, fmt, ap);
     va_end(ap);
-    ico_diag_log("milestone: %s", message);
+    char status[256] = "";
+    unsigned int ticks = ticks_fn != NULL ? ticks_fn() : 0;
+    unsigned int vsyncs = vsyncs_fn != NULL ? vsyncs_fn() : 0;
+    if (status_fn != NULL) status_fn(status, sizeof status);
+    ico_diag_log("milestone: ticks=%u vsyncs=%u movie=%d status=%s: %s",
+                 ticks, vsyncs, movie_playing, status, message);
 }
 
 void ico_diag_set_failure(const char *fmt, ...)
@@ -114,7 +119,14 @@ void ico_diag_set_sources(IcoDiagStatusFn status, unsigned int (*main_ticks)(voi
 void ico_diag_note_progress(void) { progress++; }
 unsigned int ico_diag_progress(void) { return progress; }
 void ico_diag_set_movie(int playing) { movie_playing = playing != 0; }
-void ico_diag_set_exit_hook(void (*fn)(const char *reason)) { exit_hook = fn; }
+void ico_diag_set_exit_hook(void (*fn)(const char *reason))
+{
+    /* Vita crash dispatch is not installed, so do not imply this hook fires. */
+    exit_hook = NULL;
+    if (fn != NULL) {
+        ico_diag_log("fatal exit hook registered but not armed: Vita crash dispatch is outstanding");
+    }
+}
 
 void ico_diag_set_fatal_ui(void (*box)(const char *text), void (*flush)(void))
 {
@@ -179,7 +191,17 @@ void ico_host_kanban_step(int boot_step, int mc_check_step)
 
 void ico_diag_set_effects_program(int loaded) { effects_program = loaded != 0; }
 void ico_diag_present_enter(void) { present_since_ns = ico_diag_now_ns(); }
-void ico_diag_present_leave(void) { present_since_ns = 0; }
+void ico_diag_present_leave(void)
+{
+    if (present_since_ns != 0) {
+        unsigned long long elapsed = ico_diag_now_ns() - present_since_ns;
+        if (elapsed >= 100000000ull) {
+            ico_diag_log("slow present: %.1f ms effects_program=%d",
+                         (double)elapsed / 1000000.0, effects_program);
+        }
+    }
+    present_since_ns = 0;
+}
 
 void ico_diag_watchdog_pause(int paused)
 {

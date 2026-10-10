@@ -538,6 +538,19 @@ jobs:
           "$test_bin" alloc-fail
           "$test_bin" base-fail
 
+      - name: Build and run Vita diagnostics mock regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$GITHUB_WORKSPACE"
+          cc -std=gnu11 -Wall -Wextra -Werror -O2 \
+            -I "$root/port/platform/test/mock" \
+            -I "$root/port/platform" \
+            "$root/port/platform/diag_vita.c" \
+            "$root/port/platform/test/diag_vita_test.c" \
+            -o "$RUNNER_TEMP/diag_vita_test"
+          (cd "$RUNNER_TEMP" && ./diag_vita_test)
+
   softdouble-regression:
     runs-on: ubuntu-24.04
     timeout-minutes: 15

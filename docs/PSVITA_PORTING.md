@@ -206,3 +206,10 @@ prototype a Vita-supported textured triangle and validate the renderer's
 integer target, depth/stencil, and shader requirements. The controller adapter,
 native application entry point, full-game link, and runtime tests remain
 outstanding. The existing smoke VPK is not an ICO game build.
+
+
+## Vita diagnostics backend (2026-10)
+
+When `ICO_INPUT_VITA=ON`, CMake selects `port/platform/diag_vita.c` instead of the desktop `diag_host.c`; the option is declared at the root so the platform subdirectory sees it before target source selection. The Vita backend provides monotonic timestamps, append-only logging, milestone context, progress and float-fault counters, and explicit unknown results for process-memory sampling. It logs that crash handlers, stack unwinding and the background watchdog are not implemented; a watchdog request is never represented as running. The VitaSDK CI cross-compiles this backend, and a host mock regression checks timestamp conversion, counters, deduplication, milestone context and truthful reporting of unsupported capabilities.
+
+This is a platform-layer milestone, not a full application build. The aggregate platform target and native runtime remain subject to separate compatibility checks.
