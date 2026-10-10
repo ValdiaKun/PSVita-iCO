@@ -81,6 +81,27 @@ jobs:
             printf 'Verified ARMv7 object: %s\n' "$object"
           done
 
+      - name: Cross-compile portable production math modules
+        shell: bash
+        run: |
+          set -euo pipefail
+          cc="$VITASDK/bin/arm-vita-eabi-gcc"
+          root="$GITHUB_WORKSPACE"
+          for source in cloth.c libvu0.c matrix.c matrix_drive.c matrix_stack.c quaternion.c softdouble.c; do
+            object="$RUNNER_TEMP/ico_math_${source%.c}_vita.o"
+            "$cc" -std=gnu11 -Wall -Wextra -Werror -O2 \
+              -I "$root" \
+              -I "$root/port/math" \
+              -I "$root/port/compat" \
+              -I "$root/ico2/seki/include" \
+              -I "$root/ico2/sugipon/include" \
+              -c "$root/port/math/$source" -o "$object"
+            header="$("$VITASDK/bin/arm-vita-eabi-readelf" -h "$object")"
+            grep -Eq 'Class:[[:space:]]+ELF32' <<< "$header"
+            grep -Eq 'Machine:[[:space:]]+ARM' <<< "$header"
+            printf 'Verified ARMv7 math object: %s\n' "$object"
+          done
+
       - name: Build and validate a minimal Vita VPK
         shell: bash
         run: |
