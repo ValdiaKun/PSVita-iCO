@@ -185,3 +185,23 @@ jobs:
             ${{ runner.temp }}/vita-vpk-probe/build/vita_vpk_probe.vpk
           retention-days: 7
           if-no-files-found: error
+
+  softdouble-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure host regression test
+        run: |
+          cmake -S . -B "$RUNNER_TEMP/ico-softdouble-host" -G Ninja \
+            -DICO_HEADLESS=ON \
+            -DICO_RHI_VULKAN=OFF \
+            -DICO_RHI_D3D12=OFF \
+            -DICO_LINK_EXE=OFF \
+            -DICO_RUN_TESTS=ON
+
+      - name: Build and run bit-exact softdouble regression
+        run: |
+          cmake --build "$RUNNER_TEMP/ico-softdouble-host" --target softdouble_test --parallel 2
+          ctest --test-dir "$RUNNER_TEMP/ico-softdouble-host" --output-on-failure -R '^softdouble$'
