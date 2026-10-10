@@ -6,11 +6,19 @@ on:
     paths:
       - ".github/workflows/vita-toolchain-probe.yml"
       - "docs/PSVITA_PORTING.md"
+      - "port/math/**"
+      - "port/audio/**"
   pull_request:
     paths:
       - ".github/workflows/vita-toolchain-probe.yml"
       - "docs/PSVITA_PORTING.md"
+      - "port/math/**"
+      - "port/audio/**"
   workflow_dispatch:
+
+concurrency:
+  group: vita-toolchain-probe-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
