@@ -99,3 +99,13 @@ jobs:
                   raise SystemExit(f"required VPK members missing: {names}")
               print("VPK archive verified:", ", ".join(names))
           PY
+
+      - name: Upload minimal SDK smoke-test package
+        uses: actions/upload-artifact@v4
+        with:
+          name: vita-sdk-smoke-probe-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/vita-vpk-probe/build/vita_vpk_probe.self
+            ${{ runner.temp }}/vita-vpk-probe/build/vita_vpk_probe.vpk
+          retention-days: 7
+          if-no-files-found: error
