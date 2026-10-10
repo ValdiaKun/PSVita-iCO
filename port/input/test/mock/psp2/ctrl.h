@@ -16,8 +16,8 @@
 #define SCE_CTRL_CIRCLE   0x00002000u
 #define SCE_CTRL_CROSS    0x00004000u
 #define SCE_CTRL_SQUARE   0x00008000u
-#define SCE_CTRL_L3   0x00010000u
-#define SCE_CTRL_R3   0x00020000u
+#define SCE_CTRL_L3     0x00000002u
+#define SCE_CTRL_R3     0x00000004u
 
 typedef struct SceCtrlData {
     uint32_t timeStamp;
