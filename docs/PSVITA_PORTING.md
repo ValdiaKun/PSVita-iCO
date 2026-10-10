@@ -84,6 +84,8 @@ Vita game build:
   IDs without the ARM warning. Two regression assertions for negative and
   sentinel IDs were added to `rd_state_test.c`; that host test was not executed
   by the Vita-only workflow.
+- **Latest verified CI (run 38024881207, commit e6c4405):** all three jobs passed: the VitaSDK probe, bit-exact host softdouble regression, and the full 214-unit game-source audit. The SDK job also compiled the 23 renderer/support units and the existing five platform services (arena.c, pace_policy.c, hotkeys.c, host_fs.c, fpenv.c), and structurally validated a minimal probe VPK. The VPK contains only a trivial main; it is not an ICO build.
+- **Vita memory/FP platform fixes:** arena.c now uses a Vita user-RW kernel memblock instead of unavailable sys/mman.h, checks allocation/base-address errors, and zeroes the allocation. This compiles in VitaSDK CI, but allocating the full 41 MiB block on hardware remains unverified. fpenv.c uses ARM VFP FPSCR controls for rounding/flush-to-zero; hardware FP exception trapping is not provided by the Cortex-A9 VFP path, so ICO_FPTRAP is rejected rather than silently emulated. Runtime FP semantics still need device tests.
 - **RHI contract and shader pipeline:** `port/rhi/rhi.h` describes a vertex +
   fragment pipeline (no compute), two frames in flight, storage-read buffers
   for bones/particles, and explicit render-target/state transitions. The shader
