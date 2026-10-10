@@ -239,3 +239,30 @@ jobs:
         run: |
           cmake --build "$RUNNER_TEMP/ico-softdouble-project/build" --target softdouble_test --parallel 2
           ctest --test-dir "$RUNNER_TEMP/ico-softdouble-project/build" --output-on-failure -R softdouble
+
+  game-source-audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    container:
+      image: vitasdk/vitasdk:2026.08
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cross-compile every host game translation unit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/vita_source_audit.py \
+            --root "$GITHUB_WORKSPACE" \
+            --cc "$VITASDK/bin/arm-vita-eabi-gcc" \
+            --output-dir "$RUNNER_TEMP/vita-game-objects" \
+            --report "$RUNNER_TEMP/vita-source-audit.json"
+
+      - name: Upload source-audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vita-game-source-audit
+          path: ${{ runner.temp }}/vita-source-audit.json
+          retention-days: 7
+          if-no-files-found: warn
