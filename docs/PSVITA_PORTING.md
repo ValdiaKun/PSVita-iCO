@@ -149,6 +149,8 @@ Vita game build:
 - This smoke-test VPK contains only a `main` that returns immediately; it does
   not compile ICO sources or demonstrate graphics, input, audio or game startup.
 
+**Latest verified CI (run 38026705771, commit 9145a26):** all three jobs passed: the VitaSDK probe, bit-exact host softdouble regression, and the full 214-unit game-source audit. The SDK job additionally compiles `host_config.c` with `-Wall -Wextra -Werror` and checks every listed platform object is ELF32/ARM. This remains a compile audit, not a full application link.
+
 ### Gate 2 — Game-code compile audit
 
 - The compile-only audit currently covers all 214 game C translation units and
@@ -157,6 +159,9 @@ Vita game build:
 - Next extend the audit to the platform-independent port libraries and classify
   any unsupported target APIs separately from the game sources.
 - Do not stub required game behavior merely to make a build green.
+
+
+- **Newly isolated platform blocker:** `port/platform/fiber.c` still uses POSIX `mmap`/`mprotect`/`munmap` and `sysconf(_SC_PAGESIZE)` outside its Windows branch. The VitaSDK audit currently does not compile this file. A Vita adaptation must replace allocation/free with Vita memblocks and explicitly decide how to handle the guard page; simply disabling the guard without preserving stack layout and allocation ownership would be unsafe. `sched.c` depends on this fiber implementation, so this is a high-priority blocker before the scheduler can be considered Vita-ready.
 
 ### Gate 3 — Platform services
 
