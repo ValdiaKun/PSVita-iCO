@@ -66,7 +66,7 @@ jobs:
               -I "$GITHUB_WORKSPACE/port/audio" \
               -c "$GITHUB_WORKSPACE/port/audio/$source" -o "$object"
           done
-          for object in "$RUNNER_TEMP/ico_ps2float_vita.o" "$RUNNER_TEMP"/ico_*_vita.o; do
+          for object in "$RUNNER_TEMP"/ico_*_vita.o; do
             header="$("$VITASDK/bin/arm-vita-eabi-readelf" -h "$object")"
             grep -Eq 'Class:[[:space:]]+ELF32' <<< "$header"
             grep -Eq 'Machine:[[:space:]]+ARM' <<< "$header"
