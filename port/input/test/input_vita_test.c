@@ -48,7 +48,7 @@ int main(void)
     next_sample.ry = 128;
     next_sample.buttons = SCE_CTRL_CROSS | SCE_CTRL_START | SCE_CTRL_LTRIGGER;
     assert(ico_input_vita_update() == 0);
-    assert(published.buttons == (ICO_PAD_CROSS | ICO_PAD_START | ICO_PAD_L1));
+    assert(published.buttons == (ICO_PAD_CROSS | ICO_PAD_START | ICO_PAD_L2));
     assert(published.menu_buttons == published.buttons);
     assert(published.lx == 1.0f && published.ly == -1.0f);
     assert(published.rx == 0.0f && published.ry == 0.0f);
