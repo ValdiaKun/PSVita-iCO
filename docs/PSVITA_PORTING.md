@@ -44,12 +44,6 @@ Vita game build:
   executable also pulls in host-loop/window code. Vita needs a deliberate
   platform implementation, not a wholesale reuse of these host files.
 - **Native controller adapter (new):** `port/input/input_vita.c` maps Vita `sceCtrl` samples into the existing virtual-pad interface and explicitly clears the virtual pad on sampling errors to avoid stuck buttons. It is opt-in with `ICO_INPUT_VITA=ON`; the VitaSDK CI cross-compiles it and a host mock test checks mapping and failure handling. It currently uses a fixed physical-button mapping, not the desktop configurable bindings, and is not yet wired into a complete Vita main loop.
-- **Input:** `port/input/CMakeLists.txt` separates portable mapping, virtual-pad
-  and recording logic from `input_sdl.c`, which is only included for the SDL
-  window build. The native `input_vita.c` adapter now exists and is compile-
-  gated in VitaSDK CI; its host mock regression checks mapping and read-error
-  clearing. It uses a fixed mapping and is not yet connected to a complete Vita
-  main loop or verified on hardware.
 - **Audio:** `port/audio/CMakeLists.txt` separates the software SPU2 and
   ADPCM/mixing logic from the SDL output sink (`out_sdl.c`). The new
   `out_vita.c` sink uses `sceAudioOut` with fixed 1024-frame submissions and
