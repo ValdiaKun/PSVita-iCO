@@ -16,16 +16,12 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include "archive.h"
+#include "diag_host.h"
 #include "host_config.h"
 #include "host_fs.h"
 #include "miniz.h"
 #include "../include/ico_endian.h"
-
-#ifdef _WIN32
-#include <windows.h>
-#endif
 
 #define DF_PATH "DFDATAS/DATA.DF"
 #define ELF_PATH "SCES_507.60"
@@ -173,18 +169,9 @@ static void say(char *why, size_t n, const char *fmt, ...)
 
 static double now_s(void)
 {
-#ifdef _WIN32
-    LARGE_INTEGER f, c;
-
-    QueryPerformanceFrequency(&f);
-    QueryPerformanceCounter(&c);
-    return (double)c.QuadPart / (double)f.QuadPart;
-#else
-    struct timespec ts;
-
-    timespec_get(&ts, TIME_UTC);
-    return (double)ts.tv_sec + (double)ts.tv_nsec * 1e-9;
-#endif
+    /* Use the platform's monotonic clock. C11 timespec_get/TIME_UTC is not
+       provided by Vita's libc, and wall-clock adjustments distort durations. */
+    return (double)ico_diag_now_ns() * 1e-9;
 }
 
 /* Flushes fp, syncs it to the disk and closes it, always: 0, or the errno
