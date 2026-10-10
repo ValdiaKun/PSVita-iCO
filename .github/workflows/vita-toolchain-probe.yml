@@ -209,10 +209,10 @@ jobs:
           root="$GITHUB_WORKSPACE"
           for source in vu1_ref.c vu1_normal.c vu1_scissor.c vu1_cluster.c vu1_mesh.c vu1_particle.c; do
             object="$RUNNER_TEMP/ico_vu1_${source%.c}_vita.o"
-            "$cc" -std=gnu11 -Wall -Wextra -Werror -O2 \\
-              -fno-strict-aliasing -ffp-contract=off -fno-fast-math \\
-              -I "$root/port/math" \\
-              -I "$root/port/render/vu1_ref" \\
+            "$cc" -std=gnu11 -Wall -Wextra -Werror -O2 \
+              -fno-strict-aliasing -ffp-contract=off -fno-fast-math \
+              -I "$root/port/math" \
+              -I "$root/port/render/vu1_ref" \
               -c "$root/port/render/vu1_ref/$source" -o "$object"
             header="$("$VITASDK/bin/arm-vita-eabi-readelf" -h "$object")"
             grep -Eq 'Class:[[:space:]]+ELF32' <<< "$header"
