@@ -50,10 +50,11 @@ Vita game build:
 - **Audio:** `port/audio/CMakeLists.txt` separates the software SPU2 and
   ADPCM/mixing logic from the SDL output sink (`out_sdl.c`). A Vita audio sink
   and lifecycle integration are still required.
-- **Measured ARMv7 scope:** the CI probe now cross-compiles
-  `port/math/ps2float.c` and `port/audio/adpcm.c` with `-Wall -Wextra -Werror`
-  and checks the object headers for ELF32/ARM. This proves only those two
-  translation units compile for the target; it is not a game-wide compile audit.
+- **Measured ARMv7 scope:** the CI probe cross-compiles `port/math/ps2float.c`
+  plus the portable SPU2 core (`adpcm.c`, `spu2.c`, `spu2_sd.c`,
+  `spu2_tables.c`, `volume.c`, `mix_gain.c`) with `-Wall -Wextra -Werror` and
+  checks every object header for ELF32/ARM. This verifies those translation
+  units only; it is not a game-wide compile audit.
 
 ## Feasibility risks to measure early
 
