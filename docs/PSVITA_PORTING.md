@@ -66,6 +66,12 @@ Vita game build:
   regression and SDK smoke-package job. This is a compile-only audit: it does
   not link the game or compile/verify the host platform, RHI, shader, and
   window-specific dependency chain.
+- **CPU-side render support compile audit (CI run 38021850043):** VitaSDK GCC
+  compiled the six software VU1 reference translation units (`vu1_ref.c`,
+  `vu1_normal.c`, `vu1_scissor.c`, `vu1_cluster.c`, `vu1_mesh.c`,
+  `vu1_particle.c`) plus `xxh3.c` and `texpack_name.c` with strict warnings.
+  All eight objects were checked as ELF32/ARM. These CPU-side helpers do not
+  constitute a Vita GPU backend and were not linked into an application.
 - **ARMv7 compatibility fix verified:** the expanded audit exposed that ARMv7
   GCC 15.2 rejects `unsigned __int128` in `softdouble.c`. Multiplication now
   uses explicit 32-bit limbs to form the 128-bit product, and division uses
@@ -148,8 +154,9 @@ the host, and small on-device smoke tests for Vita-specific calls.
 
 ## Immediate next action
 
-Extend the VitaSDK compile audit to the platform-independent port libraries and
-their dependency seams. In parallel, define the smallest viable Vita platform
-entry/lifecycle and GPU probe; keep the host Vulkan/SDL renderer out of the Vita
-target until its API and shader requirements are addressed. The existing smoke
-VPK is not an ICO game build.
+The game-source compile audit and selected CPU-side render helpers now pass on
+ARMv7, but the project still has no Vita platform entry/lifecycle, audio sink,
+controller adapter, or native GPU backend. Next inventory the RHI capabilities
+and shader formats actually used, then prototype a Vita-supported textured
+triangle before attempting to map the renderer. The existing smoke VPK is not
+an ICO game build.
