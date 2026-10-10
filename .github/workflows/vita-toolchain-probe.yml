@@ -48,3 +48,54 @@ jobs:
             -o "$RUNNER_TEMP/vita_probe.o"
           file "$RUNNER_TEMP/vita_probe.o"
           "$VITASDK/bin/arm-vita-eabi-readelf" -h "$RUNNER_TEMP/vita_probe.o"
+
+      - name: Build and validate a minimal Vita VPK
+        shell: bash
+        run: |
+          set -euo pipefail
+          probe="$RUNNER_TEMP/vita-vpk-probe"
+          mkdir -p "$probe"
+          cat > "$probe/main.c" <<'EOF'
+          int main(void) { return 0; }
+          EOF
+          cat > "$probe/CMakeLists.txt" <<'EOF'
+          cmake_minimum_required(VERSION 3.16)
+          if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+            if(DEFINED ENV{VITASDK})
+              set(CMAKE_TOOLCHAIN_FILE "$ENV{VITASDK}/share/vita.toolchain.cmake" CACHE PATH "Vita toolchain")
+            else()
+              message(FATAL_ERROR "VITASDK is required")
+            endif()
+          endif()
+          project(vita_vpk_probe C)
+          include("$ENV{VITASDK}/share/vita.cmake" REQUIRED)
+          set(VITA_APP_NAME "ICO Vita SDK Probe")
+          set(VITA_TITLEID "VPRB00001")
+          set(VITA_VERSION "01.00")
+          add_executable(vita_vpk_probe main.c)
+          vita_create_self(vita_vpk_probe.self vita_vpk_probe)
+          vita_create_vpk(vita_vpk_probe.vpk ${VITA_TITLEID} vita_vpk_probe.self
+            VERSION ${VITA_VERSION}
+            NAME ${VITA_APP_NAME}
+          )
+          EOF
+          cmake -S "$probe" -B "$probe/build" -DCMAKE_BUILD_TYPE=Release
+          cmake --build "$probe/build" --parallel 2
+          self="$probe/build/vita_vpk_probe.self"
+          vpk="$probe/build/vita_vpk_probe.vpk"
+          test -s "$self"
+          test -s "$vpk"
+          file "$self" "$vpk"
+          python3 - "$vpk" <<'PY'
+          import sys
+          import zipfile
+          path = sys.argv[1]
+          with zipfile.ZipFile(path) as package:
+              bad = package.testzip()
+              if bad is not None:
+                  raise SystemExit(f"corrupt VPK member: {bad}")
+              names = package.namelist()
+              if "eboot.bin" not in names or "sce_sys/param.sfo" not in names:
+                  raise SystemExit(f"required VPK members missing: {names}")
+              print("VPK archive verified:", ", ".join(names))
+          PY
