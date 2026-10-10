@@ -238,4 +238,4 @@ jobs:
       - name: Build and run bit-exact softdouble regression
         run: |
           cmake --build "$RUNNER_TEMP/ico-softdouble-project/build" --target softdouble_test --parallel 2
-          ctest --test-dir "$RUNNER_TEMP/ico-softdouble-project/build" --output-on-failure -R '^softdouble
+          ctest --test-dir "$RUNNER_TEMP/ico-softdouble-project/build" --output-on-failure -R softdouble
