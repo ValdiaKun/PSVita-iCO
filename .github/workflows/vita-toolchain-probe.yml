@@ -29,13 +29,18 @@ jobs:
         run: |
           set -euo pipefail
           : "${VITASDK:?VITASDK must be set by the VitaSDK container}"
-          test -x "$VITASDK/bin/arm-vita-eabi-gcc"
-          test -x "$VITASDK/bin/vita-elf-create"
-          test -x "$VITASDK/bin/vita-make-fself"
-          test -x "$VITASDK/bin/vita-mksfoex"
-          test -x "$VITASDK/bin/vita-pack-vpk"
+          for tool in arm-vita-eabi-gcc vita-elf-create vita-make-fself vita-mksfoex vita-pack-vpk arm-vita-eabi-readelf; do
+            test -x "$VITASDK/bin/$tool"
+          done
           "$VITASDK/bin/arm-vita-eabi-gcc" --version
-          "$VITASDK/bin/vita-mksfoex" --help >/dev/null
+
+      - name: Verify Vita SFO generation
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$VITASDK/bin/vita-mksfoex" -e "ICO Vita SDK Probe" "$RUNNER_TEMP/vita_probe.sfo"
+          test -s "$RUNNER_TEMP/vita_probe.sfo"
+          file "$RUNNER_TEMP/vita_probe.sfo"
 
       - name: Compile an ARMv7 C probe
         shell: bash
