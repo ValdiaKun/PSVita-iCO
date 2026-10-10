@@ -278,15 +278,9 @@ jobs:
           entries = json.loads(database.read_text(encoding="utf-8"))
           for source in sys.argv[2:]:
               wanted = Path(source).resolve()
-              matches = [
-                  entry for entry in entries
-                  if Path(entry["file"]).resolve() == wanted
-                  and "CMakeFiles/ico_pc.dir/" in entry.get("command", "")
-              ]
+              matches = [entry for entry in entries if Path(entry["file"]).resolve() == wanted]
               if len(matches) != 1:
-                  raise SystemExit(
-                      f"expected one ico_pc compile entry for {wanted}, got {len(matches)}"
-                  )
+                  raise SystemExit(f"expected one CMake compile entry for {wanted}, got {len(matches)}")
               entry = matches[0]
               command = entry.get("command")
               if not command or "ICO_AUDIO_VITA=1" not in command:
@@ -310,9 +304,15 @@ jobs:
           entries = json.loads(database.read_text(encoding="utf-8"))
           for source in sys.argv[2:]:
               wanted = Path(source).resolve()
-              matches = [entry for entry in entries if Path(entry["file"]).resolve() == wanted]
+              matches = [
+                  entry for entry in entries
+                  if Path(entry["file"]).resolve() == wanted
+                  and "CMakeFiles/ico_pc.dir/" in entry.get("command", "")
+              ]
               if len(matches) != 1:
-                  raise SystemExit(f"expected one CMake compile entry for {wanted}, got {len(matches)}")
+                  raise SystemExit(
+                      f"expected one ico_pc compile entry for {wanted}, got {len(matches)}"
+                  )
               entry = matches[0]
               command = entry.get("command")
               if not command or "ICO_HEADLESS=1" not in command:
