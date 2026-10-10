@@ -45,6 +45,8 @@ int main(void)
     CHECK(ico_path_join(joined, sizeof(joined), "app0:", "data/ico.o2r") == 0);
     CHECK(strcmp(joined, "app0:/data/ico.o2r") == 0);
     CHECK(ico_rmdir(data) == 0);
+    CHECK(ico_host_ini_path(ini, sizeof(ini)) == 0);
+    CHECK(ico_path_kind(data, NULL, NULL) < 0);
     if (failures != 0) {
         fprintf(stderr, "Vita host-config path regression: %d failures\n", failures);
         return 1;

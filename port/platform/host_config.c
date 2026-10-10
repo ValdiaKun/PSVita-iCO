@@ -1838,6 +1838,26 @@ static int portable_dir(char *out, size_t size)
 #endif
 }
 
+#ifdef ICO_HOST_VITA
+static int vita_data_dir(char *out, size_t size, int create)
+{
+    const char *dir = ICO_HOST_VITA_DATA_DIR;
+
+    if (size == 0 || strlen(dir) >= size) {
+        if (size > 0) {
+            out[0] = '\0';
+        }
+        return -1;
+    }
+    copy(out, size, dir);
+    if (create && ico_make_dir(out) != 0) {
+        out[0] = '\0';
+        return -1;
+    }
+    return 0;
+}
+#endif
+
 int ico_host_pref_is_portable(void)
 {
     char dir[ICO_PATH_MAX];
@@ -1848,20 +1868,7 @@ int ico_host_pref_is_portable(void)
 int ico_host_pref_dir(char *out, size_t size)
 {
 #ifdef ICO_HOST_VITA
-    const char *dir = ICO_HOST_VITA_DATA_DIR;
-
-    if (size == 0 || strlen(dir) >= size) {
-        if (size > 0) {
-            out[0] = '\0';
-        }
-        return -1;
-    }
-    copy(out, size, dir);
-    if (ico_make_dir(out) != 0) {
-        out[0] = '\0';
-        return -1;
-    }
-    return 0;
+    return vita_data_dir(out, size, 1);
 #else
     if (portable_dir(out, size)) {
         return 0;
@@ -1895,7 +1902,7 @@ int ico_host_ini_path(char *out, size_t size)
 {
     char dir[ICO_PATH_MAX];
 #ifdef ICO_HOST_VITA
-    int r = ico_host_pref_dir(dir, sizeof(dir));
+    int r = vita_data_dir(dir, sizeof(dir), 0);
 #else
     int r = ico_host_exe_dir(dir, sizeof(dir));
 #endif
@@ -1945,7 +1952,7 @@ int ico_host_saves2_dir(char *out, size_t size)
         out[0] = '\0';
     }
 #ifdef ICO_HOST_VITA
-    if (ini == NULL || ico_host_pref_dir(dir, sizeof(dir)) != 0 ||
+    if (ini == NULL || vita_data_dir(dir, sizeof(dir), 0) != 0 ||
         ico_host_ini_path(ini_path, sizeof(ini_path)) != 0) {
 #else
     if (ini == NULL || ico_host_exe_dir(dir, sizeof(dir)) != 0 ||
@@ -1987,8 +1994,12 @@ int ico_host_saves_dir(char *out, size_t size)
     if (v != NULL && v[0] != '\0') {
         r = card_dir_key(ini, dir, "saves", out, size) == 1 ? 0 : -1;
     } else {
+#ifdef ICO_HOST_VITA
+        r = vita_data_dir(dir, sizeof(dir), 0);
+#else
         r = ico_host_pref_dir(dir, sizeof(dir));
-        if (ico_path_join(out, size, dir, "memcard") != 0) {
+#endif
+        if (r != 0 || ico_path_join(out, size, dir, "memcard") != 0) {
             r = -1;
         }
     }
