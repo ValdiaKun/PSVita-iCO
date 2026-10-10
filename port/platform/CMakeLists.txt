@@ -59,6 +59,18 @@ if(ICO_HEAP_STATS)
 endif()
 
 # --- Tests ------------------------------------------------------------------
+# Exercise Vita-specific mount and writable-data path policy on the host. The
+# data directory is overridden to a disposable relative folder for this test.
+add_executable(host_config_vita_test test/host_config_vita_test.c host_config.c)
+target_compile_definitions(host_config_vita_test PRIVATE
+    ICO_HOST_VITA=1 ICO_HOST_VITA_DATA_DIR=\\\"host_config_vita_test_dir\\\")
+target_include_directories(host_config_vita_test PRIVATE "${ICO_COMPAT_DIR}")
+target_compile_options(host_config_vita_test PRIVATE ${ICO_SEMANTIC_OPTIONS} ${ICO_PORT_WARNINGS})
+target_link_libraries(host_config_vita_test PRIVATE ico_platform)
+if(ICO_RUN_TESTS)
+    add_test(NAME host_config_vita COMMAND host_config_vita_test)
+endif()
+
 foreach(t sched fiber arena diag hotkeys pace_policy lifecycle)
     add_executable(${t}_test test/${t}_test.c)
     target_include_directories(${t}_test PRIVATE "${ICO_COMPAT_DIR}")

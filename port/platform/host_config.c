@@ -15,6 +15,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef ICO_HOST_VITA
+#ifndef ICO_HOST_VITA_DATA_DIR
+#define ICO_HOST_VITA_DATA_DIR "ux0:data/ico-pc"
+#endif
+#endif
+
 /* ICO_HOST_FORCE_PORTABLE (the Android build of ico_pc, and
    host_config_portable_test): the user folder is always the executable's
    folder itself, whatever portable= says. On Android that folder is the
@@ -63,7 +69,18 @@ static void copy(char *out, size_t size, const char *s)
 
 int ico_host_exe_dir(char *out, size_t size)
 {
-#ifdef ICO_HOST_ANDROID
+#ifdef ICO_HOST_VITA
+    static const char app_dir[] = "app0:";
+
+    if (size <= sizeof(app_dir) - 1) {
+        if (size > 0) {
+            out[0] = '\0';
+        }
+        return -1;
+    }
+    memcpy(out, app_dir, sizeof(app_dir));
+    return 0;
+#elif defined(ICO_HOST_ANDROID)
     /* no folder of its own: the app's files folder */
     if (ico_android_files_dir(out, size) != 0) {
         copy(out, size, ".");
@@ -114,6 +131,14 @@ int ico_host_exe_dir(char *out, size_t size)
 
 int ico_path_is_absolute(const char *path)
 {
+    /* Vita's mount prefixes are absolute even though they do not start with
+       a slash. Keep this recognition unconditional so paths from ini files
+       can be validated by the host-side regression tests too. */
+    if (strncmp(path, "app0:", 5) == 0 || strncmp(path, "ux0:", 4) == 0 ||
+        strncmp(path, "uma0:", 5) == 0 || strncmp(path, "imc0:", 5) == 0 ||
+        strncmp(path, "ur0:", 4) == 0) {
+        return 1;
+    }
     if (path[0] == '/' || path[0] == '\\') {
         return 1;
     }
@@ -1776,7 +1801,13 @@ void ico_host_set_portable(int setting)
    missing), else 0 */
 static int portable_dir(char *out, size_t size)
 {
-#ifdef ICO_HOST_FORCE_PORTABLE
+#ifdef ICO_HOST_VITA
+    /* app0: is read-only; portable saves/settings must never be placed beside
+       the installed executable on the Vita. */
+    (void)out;
+    (void)size;
+    return 0;
+#elif defined(ICO_HOST_FORCE_PORTABLE)
     /* the executable's folder itself (Android: the app's files folder) */
     return ico_host_exe_dir(out, size) == 0;
 #else
@@ -1816,6 +1847,22 @@ int ico_host_pref_is_portable(void)
 
 int ico_host_pref_dir(char *out, size_t size)
 {
+#ifdef ICO_HOST_VITA
+    const char *dir = ICO_HOST_VITA_DATA_DIR;
+
+    if (size == 0 || strlen(dir) >= size) {
+        if (size > 0) {
+            out[0] = '\0';
+        }
+        return -1;
+    }
+    copy(out, size, dir);
+    if (ico_make_dir(out) != 0) {
+        out[0] = '\0';
+        return -1;
+    }
+    return 0;
+#else
     if (portable_dir(out, size)) {
         return 0;
     }
@@ -1841,17 +1888,25 @@ int ico_host_pref_dir(char *out, size_t size)
     }
 #endif
     return ico_host_exe_dir(out, size);
+#endif
 }
 
 int ico_host_ini_path(char *out, size_t size)
 {
     char dir[ICO_PATH_MAX];
+#ifdef ICO_HOST_VITA
+    int r = ico_host_pref_dir(dir, sizeof(dir));
+#else
     int r = ico_host_exe_dir(dir, sizeof(dir));
+#endif
 
-    if (ico_path_join(out, size, dir, "ico-pc.ini") != 0) {
+    if (r != 0 || ico_path_join(out, size, dir, "ico-pc.ini") != 0) {
+        if (size > 0) {
+            out[0] = '\0';
+        }
         return -1;
     }
-    return r;
+    return 0;
 }
 
 /* ico_host_saves2_dir and ico_host_saves_dir (below) are a read of

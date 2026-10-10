@@ -679,11 +679,45 @@ static int find_iso(const Args *a, const IcoIni *ini, const char *exe_dir, char 
             return 0;
         }
     }
+#ifdef ICO_HOST_VITA
+    /* app0: is read-only. Also look in the writable per-user directory. */
+    {
+        char user_dir[ICO_PATH_MAX];
+
+        if (ico_host_pref_dir(user_dir, sizeof(user_dir)) == 0) {
+            for (i = 0; i < IMAGE_NAME_COUNT; i++) {
+                if (ico_path_join(iso, ICO_PATH_MAX, user_dir, image_names[i]) == 0 &&
+                    ico_file_exists(iso)) {
+                    fprintf(stderr, "ico_pc: disc image in the user folder: %s\n", iso);
+                    return 0;
+                }
+            }
+        }
+    }
+#endif
     v = ico_ini_get(ini, "iso");
     if (v != NULL && v[0] != '\0') {
+#ifdef ICO_HOST_VITA
+        if (ico_path_is_absolute(v)) {
+            int n = snprintf(iso, ICO_PATH_MAX, "%s", v);
+            if (n < 0 || n >= ICO_PATH_MAX) {
+                fprintf(stderr, "ico_pc: iso= in ico-pc.ini: the path is too long\n");
+                return -1;
+            }
+        } else {
+            char user_dir[ICO_PATH_MAX];
+            if (ico_host_pref_dir(user_dir, sizeof(user_dir)) != 0 ||
+                ico_path_join(iso, ICO_PATH_MAX, user_dir, v) != 0) {
+                fprintf(stderr, "ico_pc: iso= in ico-pc.ini: the path is too long\n");
+                return -1;
+            }
+        }
+#else
         if (ico_path_join(iso, ICO_PATH_MAX, exe_dir, v) != 0) {
             fprintf(stderr, "ico_pc: iso= in ico-pc.ini: the path is too long\n");
+            return -1;
         }
+#endif
         fprintf(stderr, "ico_pc: disc image from ico-pc.ini: %s\n", iso);
         return 0;
     }
@@ -1505,6 +1539,9 @@ static int host_main(int argc, char **argv)
     Args a;
     IcoIni ini;
     char exe_dir[ICO_PATH_MAX];
+#ifdef ICO_HOST_VITA
+    char log_base[ICO_PATH_MAX];
+#endif
     char logs_dir[ICO_PATH_MAX];
     char ini_path[ICO_PATH_MAX];
     char source[ICO_PATH_MAX]; /* the disc image (use_iso) or the archive */
@@ -1528,8 +1565,14 @@ static int host_main(int argc, char **argv)
 
     /* the log first, so everything after it is recorded */
     ico_host_exe_dir(exe_dir, sizeof(exe_dir));
+#ifdef ICO_HOST_VITA
+    if (ico_host_pref_dir(log_base, sizeof(log_base)) != 0 ||
+        ico_path_join(logs_dir, sizeof(logs_dir), log_base, "logs") != 0 ||
+        ico_path_join(log_path, sizeof(log_path), logs_dir, "ico-pc.log") != 0) {
+#else
     if (ico_path_join(logs_dir, sizeof(logs_dir), exe_dir, "logs") != 0 ||
         ico_path_join(log_path, sizeof(log_path), logs_dir, "ico-pc.log") != 0) {
+#endif
         logs_dir[0] = '\0';
         log_path[0] = '\0';
     }
@@ -1563,12 +1606,18 @@ static int host_main(int argc, char **argv)
         fprintf(stderr, "ico_pc: argument %s\n", argv[r]);
     }
 
+#ifdef ICO_HOST_VITA
+    if (ico_host_ini_path(ini_path, sizeof(ini_path)) != 0) {
+        ico_host_fatal(log_file(), "Cannot create or access the writable Vita settings folder.");
+    }
+#else
     if (ico_path_join(ini_path, sizeof(ini_path), exe_dir, "ico-pc.ini") != 0) {
         ico_host_fatal(log_file(),
                        "The path of the folder %s is too long. Move the game to a folder with "
                        "a shorter path.",
                        exe_dir);
     }
+#endif
     if (ico_ini_load(&ini, ini_path) == 0) {
         fprintf(stderr, "ico_pc: settings from %s (%d keys)\n", ini_path, ini.count);
     } else {
