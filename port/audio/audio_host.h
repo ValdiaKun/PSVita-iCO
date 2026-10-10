@@ -3,9 +3,9 @@
  *
  * The audio half of the host loop: once per
  * simulated vsync the SPU2 renders the vsync's 48 kHz frames (960 at 50 Hz,
- * 800.8 on average at 59.94 Hz) and hands them to the sinks: the SDL3
- * device (window build, out_sdl.c), a WAV file (ini audio_dump=), or
- * nothing (headless).  The SNDN2DRV host keeps running in every mode, since
+ * 800.8 on average at 59.94 Hz) and hands them to a sink: native Vita audio
+ * (out_vita.c), the SDL3 device (window build, out_sdl.c), a WAV file
+ * (ini audio_dump=), or nothing (headless).  The SNDN2DRV host keeps running in every mode, since
  * the game reads its envelopes and stream offsets, so a headless run is the
  * same with or without a sink.
  *
@@ -56,6 +56,13 @@ void ico_audio_scale(int16_t *dst, const int16_t *src, int count, int q8);
 
 /* Close the WAV and the device (also an atexit handler). */
 void ico_audio_host_shutdown(void);
+
+/* --- Native Vita output (out_vita.c; enabled with ICO_AUDIO_VITA) --------- */
+/* Open a 48 kHz stereo S16 port; 0 on success. */
+int ico_audio_vita_open(void);
+/* Append one rendered block; output is submitted in fixed 1024-frame chunks. */
+void ico_audio_vita_push(const int16_t *frames, int count);
+void ico_audio_vita_close(void);
 
 /* --- WAV writer (wav.c) --------------------------------------------------- */
 

@@ -48,8 +48,11 @@ Vita game build:
   window build. The portable mapping logic is a reuse candidate; a Vita
   controller adapter still needs to be implemented and tested.
 - **Audio:** `port/audio/CMakeLists.txt` separates the software SPU2 and
-  ADPCM/mixing logic from the SDL output sink (`out_sdl.c`). A Vita audio sink
-  and lifecycle integration are still required.
+  ADPCM/mixing logic from the SDL output sink (`out_sdl.c`). The new
+  `out_vita.c` sink uses `sceAudioOut` with fixed 1024-frame submissions and
+  accumulates the host loop's variable-size blocks; CMake selects it with
+  `-DICO_AUDIO_VITA=ON`. It is compile-gated in VitaSDK CI, but hardware audio
+  and latency still need testing.
 - **Verified ARMv7 compile scope (CI run 38018639427):** VitaSDK GCC 15.2 compiled
   `port/math/ps2float.c`; the portable SPU2 core (`adpcm.c`, `spu2.c`,
   `spu2_sd.c`, `spu2_tables.c`, `volume.c`, `mix_gain.c`); seven math units
@@ -163,6 +166,8 @@ Vita game build:
 
 - **Fiber/scheduler cross-compile gate (added in the current branch):** `fiber.c` selects minicoro's ARM EABI assembly context switch, but its guard-page allocator depends on POSIX virtual-memory APIs that are not part of Vita's userland contract. On Vita, the implementation now keeps the ARM assembly switch and explicitly uses its existing zeroed `calloc`/`free` stack allocator; desktop POSIX and Windows retain guarded stacks. This avoids compiling or linking unsupported VM calls, but intentionally gives up the guard page on Vita. The CI toolchain job now compiles `fiber.c` (with `ICO_VITA_TARGET=1` to exercise this branch and a compile-time assertion that the POSIX guard allocator stays disabled), `sched.c`, `kernel_host.c`, `window_lifecycle.c`, and `assert_host.c` under strict warnings; this covers the ARM context-switch assembly, scheduler, EE kernel-call bridge, platform-independent lifecycle table, and assertion bridge at object level. Passing that compile gate will establish source/ABI compatibility only; scheduler switching and stack behavior still require runtime tests on the Vita or a suitable emulator.
 
+- **Native audio sink implemented (compile gate pending):** `port/audio/out_vita.c` uses Vita's `sceAudioOut` main port at 48 kHz stereo S16. Because Vita output submissions use a fixed block length, it accumulates the game's variable 800/801-frame NTSC and 960-frame PAL-ish vsync blocks and submits complete 1024-frame chunks. Output volume is applied in software; the SNDN2/SPU2 simulation continues if the output port cannot be opened. `ICO_AUDIO_VITA=ON` explicitly selects this sink in CMake, leaving the desktop SDL path unchanged. This is an audio output implementation and cross-compile gate, not proof of audible runtime playback.
+
 - **Next platform blocker — diagnostics:** `port/platform/diag_host.c` is not in the Vita compile audit and remains a desktop implementation. Source inspection finds dependencies on POSIX signals/alternate signal stacks, `ucontext_t`, pthreads (including `pthread_getattr_np` and `pthread_kill`), `/proc/self/status`, `/proc/self/exe`, `dladdr`, and POSIX file descriptors. The root platform target also requires `Threads::Threads`. A native Vita build needs a separate, explicitly scoped diagnostic/threading implementation and Vita-specific CMake source selection; the successful compile of selected services is not evidence that `ico_platform` can link as-is.
 
 ### Gate 3 — Platform services
@@ -195,11 +200,12 @@ the host, and small on-device smoke tests for Vita-specific calls.
 
 ## Immediate next action
 
-The 214 game-source units and 23 CPU-side renderer/support units compile for
-ARMv7 in CI, and the SDK smoke VPK is structurally valid. The fiber/scheduler
-compile gate is now being added because the previous audit omitted the actual
-context-switch implementation. After that gate passes, the next high-value
-blocker is still a Vita-supported textured-triangle prototype and tests of the
-required integer target, depth/stencil, and shader path. The platform lifecycle,
-controller adapter, audio sink, and ICO game link are outstanding; the smoke
-VPK is not an ICO game build.
+The latest completed VitaSDK run before the native audio-sink addition passed all
+three jobs, including the 214/214 game-source audit. The fiber/scheduler ARMv7
+compile gate is now in place and passed; it checks source compatibility only.
+The native Vita audio sink has been added and is awaiting its first CI compile
+result. Next, resolve the diagnostics/platform source-selection blocker, then
+prototype a Vita-supported textured triangle and validate the renderer's
+integer target, depth/stencil, and shader requirements. The controller adapter,
+native application entry point, full-game link, and runtime tests remain
+outstanding. The existing smoke VPK is not an ICO game build.

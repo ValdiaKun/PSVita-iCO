@@ -67,7 +67,13 @@ target_link_libraries(ico_sndn2 PUBLIC ico_audio ico_port_data ico_platform ico_
 if(NOT WIN32)
     target_link_libraries(ico_sndn2 PUBLIC m) # exp2 for the pitch table fallback
 endif()
-if(NOT ICO_HEADLESS AND TARGET SDL3::SDL3-shared)
+# The Vita sink uses sceAudioOut and does not depend on SDL. This is an
+# explicit platform opt-in; the normal desktop and Android builds keep SDL.
+option(ICO_AUDIO_VITA "Use the native PlayStation Vita audio output" OFF)
+if(ICO_AUDIO_VITA)
+    target_sources(ico_sndn2 PRIVATE out_vita.c)
+    target_compile_definitions(ico_sndn2 PRIVATE ICO_AUDIO_VITA=1)
+elseif(NOT ICO_HEADLESS AND TARGET SDL3::SDL3-shared)
     target_sources(ico_sndn2 PRIVATE out_sdl.c)
     target_compile_definitions(ico_sndn2 PRIVATE ICO_AUDIO_SDL=1)
     target_link_libraries(ico_sndn2 PUBLIC SDL3::SDL3-shared)

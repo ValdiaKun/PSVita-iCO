@@ -24,6 +24,9 @@ static IcoWav *wav;
 #ifdef ICO_AUDIO_SDL
 static int sdl_open;
 #endif
+#ifdef ICO_AUDIO_VITA
+static int vita_open;
+#endif
 static unsigned int vsync_index;
 static int16_t out[MAX_FRAMES_PER_VSYNC * 2];
 
@@ -69,6 +72,12 @@ void ico_audio_host_shutdown(void)
         sdl_open = 0;
     }
 #endif
+#ifdef ICO_AUDIO_VITA
+    if (vita_open) {
+        ico_audio_vita_close();
+        vita_open = 0;
+    }
+#endif
 }
 
 void ico_audio_host_init(void)
@@ -102,7 +111,16 @@ void ico_audio_host_init(void)
             fprintf(stderr, "audio: cannot create %s; no dump\n", dump);
         }
     }
-#ifdef ICO_AUDIO_SDL
+#ifdef ICO_AUDIO_VITA
+    if (enable != NULL && strcmp(enable, "0") == 0) {
+        fprintf(stderr, "audio: audio=0: no Vita audio port (the driver still runs)\n");
+    } else {
+        vita_open = ico_audio_vita_open() == 0;
+        if (!vita_open) {
+            fprintf(stderr, "audio: Vita output unavailable; the driver still runs\n");
+        }
+    }
+#elif defined(ICO_AUDIO_SDL)
     if (enable != NULL && strcmp(enable, "0") == 0) {
         fprintf(stderr, "audio: audio=0: no audio device (the driver still runs)\n");
     } else {
@@ -147,7 +165,11 @@ void ico_audio_host_vsync(int hz)
         }
         ico_wav_write(wav, out, frames);
     }
-#ifdef ICO_AUDIO_SDL
+#ifdef ICO_AUDIO_VITA
+    if (vita_open) {
+        ico_audio_vita_push(out, frames);
+    }
+#elif defined(ICO_AUDIO_SDL)
     if (sdl_open) {
         ico_audio_sdl_push(out, frames);
     }

@@ -91,6 +91,57 @@ jobs:
             printf 'Verified ARMv7 object: %s\n' "$object"
           done
 
+      - name: Cross-compile native Vita audio output
+        shell: bash
+        run: |
+          set -euo pipefail
+          cc="$VITASDK/bin/arm-vita-eabi-gcc"
+          root="$GITHUB_WORKSPACE"
+          object="$RUNNER_TEMP/ico_out_vita_vita.o"
+          "$cc" -std=gnu11 -Wall -Wextra -Werror -O2 \
+            -I "$root/port/audio" \
+            -c "$root/port/audio/out_vita.c" -o "$object"
+          header="$("$VITASDK/bin/arm-vita-eabi-readelf" -h "$object")"
+          grep -Eq 'Class:[[:space:]]+ELF32' <<< "$header"
+          grep -Eq 'Machine:[[:space:]]+ARM' <<< "$header"
+          printf 'Verified ARMv7 native audio output object: %s\n' "$object"
+
+      - name: Cross-compile native Vita audio sink and integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          cc="$VITASDK/bin/arm-vita-eabi-gcc"
+          root="$GITHUB_WORKSPACE"
+          common_includes=(
+            -I "$root"
+            -I "$root/port/audio"
+            -I "$root/port/game"
+            -I "$root/port/platform"
+            -I "$root/port/compat"
+            -I "$root/port/config"
+            -I "$root/port/input"
+            -I "$root/port/data"
+            -I "$root/port/save"
+            -I "$root/port/fmv"
+            -I "$root/ico2/sugipon/include"
+            -I "$root/ico2/seki/include"
+          )
+          "$cc" -std=gnu11 -Wall -Wextra -Werror -O2 \
+            "${common_includes[@]}" \
+            -DICO_AUDIO_VITA=1 \
+            -c "$root/port/audio/audio_host.c" \
+            -o "$RUNNER_TEMP/ico_audio_host_vita.o"
+          "$cc" -std=gnu11 -Wall -Wextra -Werror -O2 \
+            "${common_includes[@]}" \
+            -c "$root/port/audio/out_vita.c" \
+            -o "$RUNNER_TEMP/ico_out_vita_vita.o"
+          for object in "$RUNNER_TEMP/ico_audio_host_vita.o" "$RUNNER_TEMP/ico_out_vita_vita.o"; do
+            header="$("$VITASDK/bin/arm-vita-eabi-readelf" -h "$object")"
+            grep -Eq 'Class:[[:space:]]+ELF32' <<< "$header"
+            grep -Eq 'Machine:[[:space:]]+ARM' <<< "$header"
+            printf 'Verified ARMv7 Vita audio object: %s\n' "$object"
+          done
+
       - name: Cross-compile portable production math modules
         shell: bash
         run: |
