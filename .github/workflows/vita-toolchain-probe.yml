@@ -110,7 +110,7 @@ jobs:
           root="$GITHUB_WORKSPACE"
           for source in bindings.c input_record.c mouse_camera.c mouse_look.c pad_host.c pad_script.c pointer.c touch.c vpad.c; do
             object="$RUNNER_TEMP/ico_input_${source%.c}_vita.o"
-            "$cc" -std=gnu11 -Wall -Wextra -Werror -O2 \
+            "$cc" -std=gnu11 -Wall -Wextra -Wno-unused-parameter -Werror -O2 \
               -I "$root" \
               -I "$root/port/input" \
               -I "$root/port/platform" \
