@@ -17,6 +17,7 @@ option(ICO_HEADLESS "Build the headless ico_pc (no window, no renderer)" OFF)
 option(ICO_FPTRAP "Unmask float divide-by-zero and invalid in simulation mode" OFF)
 option(ICO_BUILD_BLOCKED "Also compile the sources cmake/IcoExclusions.cmake blocks" OFF)
 option(ICO_LINK_EXE "Link the ico_pc executable (fails while symbols are unresolved)" OFF)
+option(ICO_INPUT_VITA "Build the native PlayStation Vita controller adapter and platform services" OFF)
 
 # The retail game ran with its asserts live (the reconstruction calls
 # __assert where the macro expanded), so no configuration defines NDEBUG:
