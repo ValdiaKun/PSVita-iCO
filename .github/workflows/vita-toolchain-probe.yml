@@ -219,6 +219,18 @@ jobs:
             grep -Eq 'Machine:[[:space:]]+ARM' <<< "$header"
             printf 'Verified ARMv7 CPU renderer object: %s\n' "$object"
           done
+          for source in xxh3.c texpack_name.c; do
+            object="$RUNNER_TEMP/ico_render_${source%.c}_vita.o"
+            "$cc" -std=gnu11 -Wall -Wextra -Werror -O2 \
+              -fno-strict-aliasing -ffp-contract=off -fno-fast-math \
+              -I "$root/port/math" \
+              -I "$root/port/render" \
+              -c "$root/port/render/$source" -o "$object"
+            header="$("$VITASDK/bin/arm-vita-eabi-readelf" -h "$object")"
+            grep -Eq 'Class:[[:space:]]+ELF32' <<< "$header"
+            grep -Eq 'Machine:[[:space:]]+ARM' <<< "$header"
+            printf 'Verified ARMv7 render support object: %s\\n' "$object"
+          done
 
   softdouble-regression:
     runs-on: ubuntu-24.04
