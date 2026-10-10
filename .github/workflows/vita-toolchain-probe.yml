@@ -189,7 +189,7 @@ jobs:
           header="$("$VITASDK/bin/arm-vita-eabi-readelf" -h "$object")"
           grep -Eq 'Class:[[:space:]]+ELF32' <<< "$header"
           grep -Eq 'Machine:[[:space:]]+ARM' <<< "$header"
-          printf 'Verified ARMv7 Vita controller object: %s\\n' "$object"
+          printf 'Verified ARMv7 Vita controller object: %s\n' "$object"
 
       - name: Build and validate a minimal Vita VPK
         shell: bash
