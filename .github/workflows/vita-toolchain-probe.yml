@@ -197,9 +197,23 @@ jobs:
           set -euo pipefail
           root="$GITHUB_WORKSPACE"
           build="$RUNNER_TEMP/ico-vita-input-cmake"
+          deps="$RUNNER_TEMP/ico-deps"
+          mkdir -p "$deps/libchdr"
+          git init -q "$RUNNER_TEMP/libchdr.git"
+          git -C "$RUNNER_TEMP/libchdr.git" fetch -q --depth 1 \
+            https://github.com/rtissera/libchdr "refs/tags/v0.3.0"
+          chdr_commit="$(git -C "$RUNNER_TEMP/libchdr.git" rev-parse 'FETCH_HEAD^{commit}')"
+          test "$chdr_commit" = "93d8c239ff0d4e8d7722985992649fce12d2463b"
+          git -C "$RUNNER_TEMP/libchdr.git" archive --format=tar \
+            -o "$RUNNER_TEMP/libchdr.tar" "$chdr_commit"
+          echo "591863ddda6c4a90192e66ac682d9f535ac9af79f2385e7c180af0b3b46e1394  $RUNNER_TEMP/libchdr.tar" \
+            | sha256sum -c -
+          tar -C "$deps/libchdr" -xf "$RUNNER_TEMP/libchdr.tar" \
+            src include deps LICENSE.txt README.md CHANGELOG.md
           cmake -S "$root" -B "$build" \
             -DCMAKE_TOOLCHAIN_FILE="$VITASDK/share/vita.toolchain.cmake" \
             -DCMAKE_BUILD_TYPE=Release \
+            -DICO_DEPS_DIR="$deps" \
             -DICO_HEADLESS=ON \
             -DICO_LINK_EXE=OFF \
             -DICO_INPUT_VITA=ON \
