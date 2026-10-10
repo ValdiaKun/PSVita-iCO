@@ -14,11 +14,16 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <windows.h>
+#elif defined(__vita__) || defined(__psp2__)
+#include <psp2/kernel/sysmem.h>
 #else
 #include <sys/mman.h>
 #endif
 
 static unsigned char *arena;
+#if defined(__vita__) || defined(__psp2__)
+static SceUID arena_memblock = -1;
+#endif
 
 /* eeword.h reads the base through this, without a call. It is set where the
    arena is created and must never change afterwards (ico_arena_init checks). */
@@ -41,6 +46,25 @@ int ico_arena_init(void)
         fprintf(stderr, "arena: cannot allocate %u bytes\n", (unsigned int)total);
         return -1;
     }
+#elif defined(__vita__) || defined(__psp2__)
+    /* VitaSDK has no sys/mman.h; keep the EE arena in a user RW memblock. */
+    arena_memblock = sceKernelAllocMemBlock("ico_ee_arena", SCE_KERNEL_MEMBLOCK_TYPE_USER_RW,
+                                            (SceSize)total, NULL);
+    if (arena_memblock < 0) {
+        fprintf(stderr, "arena: cannot allocate %u bytes (Vita memblock error 0x%08x)\n",
+                (unsigned int)total, (unsigned int)arena_memblock);
+        arena_memblock = -1;
+        return -1;
+    }
+    m = NULL;
+    if (sceKernelGetMemBlockBase(arena_memblock, &m) < 0 || m == NULL) {
+        fprintf(stderr, "arena: cannot get Vita memblock base\n");
+        sceKernelFreeMemBlock(arena_memblock);
+        arena_memblock = -1;
+        return -1;
+    }
+    /* Match the zero-filled semantics of VirtualAlloc/mmap explicitly. */
+    memset(m, 0, total);
 #else
     m = mmap(NULL, total, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (m == MAP_FAILED) {

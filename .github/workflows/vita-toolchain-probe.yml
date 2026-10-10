@@ -6,10 +6,7 @@ on:
     paths:
       - ".github/workflows/vita-toolchain-probe.yml"
       - "docs/PSVITA_PORTING.md"
-      - "port/math/**"
-      - "port/audio/**"
-      - "port/render/**"
-      - "port/render/**"
+      - "port/**"
       - "tools/vita_source_audit.py"
       - "cmake/IcoSources.cmake"
       - "cmake/IcoFlags.cmake"
@@ -20,9 +17,7 @@ on:
     paths:
       - ".github/workflows/vita-toolchain-probe.yml"
       - "docs/PSVITA_PORTING.md"
-      - "port/math/**"
-      - "port/audio/**"
-      - "port/render/**"
+      - "port/**"
       - "tools/vita_source_audit.py"
       - "cmake/IcoSources.cmake"
       - "cmake/IcoFlags.cmake"
@@ -292,7 +287,7 @@ jobs:
             header="$("$VITASDK/bin/arm-vita-eabi-readelf" -h "$object")"
             grep -Eq 'Class:[[:space:]]+ELF32' <<< "$header"
             grep -Eq 'Machine:[[:space:]]+ARM' <<< "$header"
-            printf 'Verified ARMv7 platform service object: %s\\n' "$object"
+            printf 'Verified ARMv7 platform service object: %s\n' "$object"
           done
 
   softdouble-regression:
