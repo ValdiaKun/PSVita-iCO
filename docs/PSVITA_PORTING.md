@@ -52,9 +52,10 @@ hardware or a suitable emulator.
 
 - Install the pinned VitaSDK container in CI and verify the required compiler,
   linker and packaging tools are present.
-- Compile a tiny ARMv7 object, then use VitaSDK's documented CMake helpers to
-  create a minimal SELF/VPK. Check the archive structure and retain the smoke-test
-  package as a short-lived CI artifact.
+- Compile a tiny ARMv7 object and two existing portable production modules
+  (`port/math/ps2float.c` and `port/audio/adpcm.c`) with warnings treated as errors.
+  Use VitaSDK's documented CMake helpers to create a minimal SELF/VPK, check the
+  archive structure, and retain the smoke-test package as a short-lived CI artifact.
 - This smoke-test VPK contains only a `main` that returns immediately; it does
   not compile ICO sources or demonstrate graphics, input, audio or game startup.
   Only after the probe passes should an experimental repository toolchain and
@@ -96,8 +97,4 @@ the host, and small on-device smoke tests for Vita-specific calls.
 
 ## Immediate next action
 
-Finish the VitaSDK-only CI probe: verify compiler tools, compile an ARMv7 object,
-create and structurally inspect a minimal SELF/VPK, and retain the package as a
-CI artifact. Then add a Vita-specific CMake toolchain/preset without changing the
-desktop/Android workflows, and start a measured compile audit of portable game
-sources. The probe's green status must not be presented as an ICO game build.
+Extend the VitaSDK-only CI probe from the confirmed minimal VPK build to cross-compile selected portable production modules with strict warnings. Once that passes, add a Vita-specific CMake toolchain/preset without changing desktop/Android workflows, then expand the source allowlist incrementally. A green smoke-test VPK is not an ICO game build.
