@@ -60,11 +60,13 @@ jobs:
             -I "$GITHUB_WORKSPACE/port/math" \
             -c "$GITHUB_WORKSPACE/port/math/ps2float.c" \
             -o "$RUNNER_TEMP/ico_ps2float_vita.o"
-          "$cc" -std=gnu11 -Wall -Wextra -Werror -O2 \
-            -I "$GITHUB_WORKSPACE/port/audio" \
-            -c "$GITHUB_WORKSPACE/port/audio/adpcm.c" \
-            -o "$RUNNER_TEMP/ico_adpcm_vita.o"
-          for object in "$RUNNER_TEMP/ico_ps2float_vita.o" "$RUNNER_TEMP/ico_adpcm_vita.o"; do
+          for source in adpcm.c spu2.c spu2_sd.c spu2_tables.c volume.c mix_gain.c; do
+            object="$RUNNER_TEMP/ico_${source%.c}_vita.o"
+            "$cc" -std=gnu11 -Wall -Wextra -Werror -O2 \
+              -I "$GITHUB_WORKSPACE/port/audio" \
+              -c "$GITHUB_WORKSPACE/port/audio/$source" -o "$object"
+          done
+          for object in "$RUNNER_TEMP/ico_ps2float_vita.o" "$RUNNER_TEMP"/ico_*_vita.o; do
             header="$("$VITASDK/bin/arm-vita-eabi-readelf" -h "$object")"
             grep -Eq 'Class:[[:space:]]+ELF32' <<< "$header"
             grep -Eq 'Machine:[[:space:]]+ARM' <<< "$header"
