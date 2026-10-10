@@ -10,6 +10,7 @@ unsigned long long sceKernelGetSystemTimeWide(void) { return fake_time_us; }
 static unsigned int ticks(void) { return 42; }
 static unsigned int vsyncs(void) { return 99; }
 static void status(char *out, size_t size) { snprintf(out, size, "mock-status"); }
+static void exit_hook(const char *reason) { (void)reason; }
 
 static int check(int condition, const char *message)
 {
@@ -46,7 +47,7 @@ int main(void)
     ico_diag_set_failure("unit failure %d", 7);
     ico_diag_name_func((void *)&fake_time_us, "test-worker");
     ico_host_thread_func(1, (void *)&fake_time_us, 3);
-    ico_diag_set_exit_hook((void (*)(const char *))status);
+    ico_diag_set_exit_hook(exit_hook);
     ico_diag_set_effects_program(1);
     ico_diag_present_enter();
     fake_time_us += 150000ull;
