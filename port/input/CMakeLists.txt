@@ -82,7 +82,7 @@ endif()
 if(ICO_RUN_TESTS AND NOT CMAKE_CROSSCOMPILING)
     add_executable(vita_input_test test/input_vita_test.c input_vita.c)
     target_include_directories(vita_input_test BEFORE PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}/test/mock")
+        "${CMAKE_CURRENT_SOURCE_DIR}/test/mock" "${CMAKE_CURRENT_SOURCE_DIR}")
     target_compile_options(vita_input_test PRIVATE ${ICO_SEMANTIC_OPTIONS} ${ICO_PORT_WARNINGS})
     add_test(NAME vita_input COMMAND vita_input_test)
 endif()
