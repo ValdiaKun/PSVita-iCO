@@ -47,7 +47,9 @@ jobs:
             -c "$RUNNER_TEMP/vita_probe.c" \
             -o "$RUNNER_TEMP/vita_probe.o"
           file "$RUNNER_TEMP/vita_probe.o"
-          "$VITASDK/bin/arm-vita-eabi-readelf" -h "$RUNNER_TEMP/vita_probe.o"
+          header="$("$VITASDK/bin/arm-vita-eabi-readelf" -h "$RUNNER_TEMP/vita_probe.o")"
+          grep -Eq 'Class:[[:space:]]+ELF32' <<< "$header"
+          grep -Eq 'Machine:[[:space:]]+ARM' <<< "$header"
 
       - name: Cross-compile portable production modules
         shell: bash
@@ -62,8 +64,12 @@ jobs:
             -I "$GITHUB_WORKSPACE/port/audio" \
             -c "$GITHUB_WORKSPACE/port/audio/adpcm.c" \
             -o "$RUNNER_TEMP/ico_adpcm_vita.o"
-          "$VITASDK/bin/arm-vita-eabi-readelf" -h "$RUNNER_TEMP/ico_ps2float_vita.o"
-          "$VITASDK/bin/arm-vita-eabi-readelf" -h "$RUNNER_TEMP/ico_adpcm_vita.o"
+          for object in "$RUNNER_TEMP/ico_ps2float_vita.o" "$RUNNER_TEMP/ico_adpcm_vita.o"; do
+            header="$("$VITASDK/bin/arm-vita-eabi-readelf" -h "$object")"
+            grep -Eq 'Class:[[:space:]]+ELF32' <<< "$header"
+            grep -Eq 'Machine:[[:space:]]+ARM' <<< "$header"
+            printf 'Verified ARMv7 object: %s\\n' "$object"
+          done
 
       - name: Build and validate a minimal Vita VPK
         shell: bash
