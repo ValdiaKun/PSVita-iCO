@@ -4,7 +4,8 @@
  * Native PlayStation Vita controller adapter. Samples the physical controls
  * with sceCtrl and feeds the project's existing virtual DualShock pad seam.
  * This deliberately uses a fixed default mapping; desktop binding/config
- * support is a separate integration task.
+ * support is a separate integration task. Vita's digital L/R shoulders map
+ * to the PS2's L1/R1 buttons; L2/R2 remain unavailable on the built-in pad.
  */
 #include <psp2/ctrl.h>
 #include <string.h>
@@ -60,8 +61,8 @@ int ico_input_vita_update(void)
     memset(&pad, 0, sizeof(pad));
 #define MAP_BUTTON(vita_button, ico_button) \
     do { if ((sample.buttons & (vita_button)) != 0) pad.buttons |= (ico_button); } while (0)
-    MAP_BUTTON(SCE_CTRL_LTRIGGER, ICO_PAD_L2);
-    MAP_BUTTON(SCE_CTRL_RTRIGGER, ICO_PAD_R2);
+    MAP_BUTTON(SCE_CTRL_LTRIGGER, ICO_PAD_L1);
+    MAP_BUTTON(SCE_CTRL_RTRIGGER, ICO_PAD_R1);
     MAP_BUTTON(SCE_CTRL_TRIANGLE, ICO_PAD_TRIANGLE);
     MAP_BUTTON(SCE_CTRL_CIRCLE, ICO_PAD_CIRCLE);
     MAP_BUTTON(SCE_CTRL_CROSS, ICO_PAD_CROSS);
