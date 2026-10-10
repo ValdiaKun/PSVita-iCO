@@ -191,7 +191,7 @@ jobs:
           grep -Eq 'Machine:[[:space:]]+ARM' <<< "$header"
           printf 'Verified ARMv7 Vita controller object: %s\n' "$object"
 
-      - name: Configure and build the CMake Vita input target
+      - name: Configure and compile the CMake-selected Vita input object
         shell: bash
         run: |
           set -euo pipefail
@@ -220,7 +220,33 @@ jobs:
             -DICO_RHI_VULKAN=OFF \
             -DICO_RHI_D3D12=OFF \
             -DICO_SHADERS_DXIL=OFF
-          cmake --build "$build" --target ico_input --parallel 2
+          # Build only the selected device-layer object. The aggregate ico_input
+          # target currently pulls in ico_platform/diag_host.c, which is known
+          # to require unsupported POSIX ucontext APIs on Vita; that blocker is
+          # separately reported by diagnostics-portability-audit.
+          python3 - "$build/compile_commands.json" "$root/port/input/input_vita.c" <<'PY'
+          import json
+          import shlex
+          import subprocess
+          import sys
+          from pathlib import Path
+
+          database = Path(sys.argv[1])
+          wanted = Path(sys.argv[2]).resolve()
+          entries = json.loads(database.read_text(encoding="utf-8"))
+          matches = [entry for entry in entries if Path(entry["file"]).resolve() == wanted]
+          if len(matches) != 1:
+              raise SystemExit(f"expected one CMake compile entry for {wanted}, got {len(matches)}")
+          entry = matches[0]
+          command = entry.get("command")
+          if not command:
+              raise SystemExit("CMake compile database entry has no command")
+          if "ICO_INPUT_VITA=1" not in command:
+              raise SystemExit("CMake did not apply ICO_INPUT_VITA=1 to the native input object")
+          print("Compile command:", command, flush=True)
+          subprocess.run(shlex.split(command), cwd=entry["directory"], check=True)
+          print("CMake-selected Vita input object compiled successfully", flush=True)
+          PY
 
       - name: Build and validate a minimal Vita VPK
         shell: bash
