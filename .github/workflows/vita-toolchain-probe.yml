@@ -222,10 +222,10 @@ jobs:
             -DICO_RHI_VULKAN=OFF \
             -DICO_RHI_D3D12=OFF \
             -DICO_SHADERS_DXIL=OFF
-          # Build only the selected device-layer object. The aggregate ico_input
-          # target currently pulls in ico_platform/diag_host.c, which is known
-          # to require unsupported POSIX ucontext APIs on Vita; that blocker is
-          # separately reported by diagnostics-portability-audit.
+          # First compile the selected device-layer object independently, then
+          # build ico_platform below with diag_vita.c selected. The separate
+          # diagnostics-portability-audit verifies that desktop diag_host.c is
+          # not portable to Vita unchanged (expected compile failure).
           python3 - "$build/compile_commands.json" "$root/port/input/input_vita.c" <<'PY'
           import json
           import shlex

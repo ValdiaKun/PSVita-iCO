@@ -166,7 +166,7 @@ Vita game build:
 
 - **Native audio sink implemented (VitaSDK compile passed; host regression added):** `port/audio/out_vita.c` uses Vita's `sceAudioOut` main port at 48 kHz stereo S16. Because Vita output submissions use a fixed block length, it accumulates the game's variable 800/801-frame NTSC and 960-frame PAL-ish vsync blocks and submits complete 1024-frame chunks. Output volume is applied in software; the SNDN2/SPU2 simulation continues if the output port cannot be opened. `ICO_AUDIO_VITA=ON` explicitly selects this sink in CMake, leaving the desktop SDL path unchanged. A host-side mock regression checks fixed-block chunking, sample ordering, volume scaling, and output-error cleanup; VitaSDK CI compiles the real API calls. This is not proof of audible runtime playback.
 
-- **Next platform blocker — diagnostics:** `port/platform/diag_host.c` is not in the Vita compile audit and remains a desktop implementation. Source inspection finds dependencies on POSIX signals/alternate signal stacks, `ucontext_t`, pthreads (including `pthread_getattr_np` and `pthread_kill`), `/proc/self/status`, `/proc/self/exe`, `dladdr`, and POSIX file descriptors. The root platform target also requires `Threads::Threads`. A native Vita build needs a separate, explicitly scoped diagnostic/threading implementation and Vita-specific CMake source selection; the successful compile of selected services is not evidence that `ico_platform` can link as-is. The `diagnostics-portability-audit` CI job now compiles this host file unchanged and expects a failure specifically tied to a known desktop-only dependency; this is a blocker detector, not a passing Vita implementation. Inspect the workflow result for the latest branch tip before treating this audit as validated; a successful baseline run does not validate the newly added blocker detector.
+- **Diagnostics/platform source-selection blocker — resolved at object/library level:** `port/platform/diag_host.c` remains desktop-only (POSIX signals/alternate signal stacks, `ucontext_t`, pthread APIs, `/proc`, `dladdr`, and file descriptors). With `ICO_INPUT_VITA=ON`, CMake now selects `diag_vita.c` and avoids linking `Threads::Threads`; the Vita diagnostics backend compiles with VitaSDK and a host mock regression checks its supported behavior and explicit unsupported-capability reporting. CI also confirms that `diag_host.c` fails to compile unchanged on Vita for the expected `ucontext.h` dependency, and the actual `ico_platform` static library now builds successfully with the Vita selection. This closes the previous platform-target compilation blocker, but it does not provide the missing crash handler, stack unwinding, watchdog, or fatal UI integration.
 
 ### Gate 3 — Platform services
 
@@ -198,14 +198,7 @@ the host, and small on-device smoke tests for Vita-specific calls.
 
 ## Immediate next action
 
-The latest completed VitaSDK run before the native audio-sink addition passed all
-three jobs, including the 214/214 game-source audit. The fiber/scheduler ARMv7
-compile gate is now in place and passed; it checks source compatibility only.
-The native Vita audio sink and host-side buffer regression have been added; the current CI run is checking the real VitaSDK API and integration compile. Next, resolve the diagnostics/platform source-selection blocker, then
-prototype a Vita-supported textured triangle and validate the renderer's
-integer target, depth/stencil, and shader requirements. The controller adapter,
-native application entry point, full-game link, and runtime tests remain
-outstanding. The existing smoke VPK is not an ICO game build.
+Latest verified run: `38094473862` at commit `c95796280e5c7b72a6165266361e4ca1ddc9d32c`; all six jobs passed. The VitaSDK job compiled the selected Vita platform sources and successfully built the actual `ico_platform` static library with `diag_vita.c` selected. The diagnostics mock, arena mock, softdouble regression, renderer feasibility build, SDK smoke VPK, and all 214 game translation units also passed their respective CI checks. These are compilation and focused regression milestones, not a full game link. Next, prototype a Vita-supported textured triangle and validate the renderer's integer-target, depth/stencil, and shader requirements, while mapping the native application entry point and minimum RHI integration. The controller/audio adapters are not yet wired into a complete Vita main loop; the smoke VPK and vitaGL sample VPK are not ICO game builds. No boot, visible ICO rendering, or playable gameplay has been verified.
 
 
 ## Vita diagnostics backend (2026-10)
