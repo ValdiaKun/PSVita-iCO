@@ -20,6 +20,7 @@ static int failures;
 int main(void)
 {
     char exe[ICO_PATH_MAX];
+    char tiny[5];
     char data[ICO_PATH_MAX];
     char ini[ICO_PATH_MAX];
     char expected[ICO_PATH_MAX];
@@ -27,6 +28,8 @@ int main(void)
 
     CHECK(ico_host_exe_dir(exe, sizeof(exe)) == 0);
     CHECK(strcmp(exe, "app0:") == 0);
+    memset(tiny, 'x', sizeof(tiny));
+    CHECK(ico_host_exe_dir(tiny, sizeof(tiny)) == -1 && tiny[0] == '\0');
     CHECK(ico_host_pref_dir(data, sizeof(data)) == 0);
     CHECK(strcmp(data, ICO_HOST_VITA_DATA_DIR) == 0);
     CHECK(ico_host_pref_is_portable() == 0);

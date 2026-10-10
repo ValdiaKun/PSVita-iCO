@@ -1900,6 +1900,7 @@ int ico_host_ini_path(char *out, size_t size)
     int r = ico_host_exe_dir(dir, sizeof(dir));
 #endif
 
+#ifdef ICO_HOST_VITA
     if (r != 0 || ico_path_join(out, size, dir, "ico-pc.ini") != 0) {
         if (size > 0) {
             out[0] = '\0';
@@ -1907,6 +1908,12 @@ int ico_host_ini_path(char *out, size_t size)
         return -1;
     }
     return 0;
+#else
+    if (ico_path_join(out, size, dir, "ico-pc.ini") != 0) {
+        return -1;
+    }
+    return r;
+#endif
 }
 
 /* ico_host_saves2_dir and ico_host_saves_dir (below) are a read of
