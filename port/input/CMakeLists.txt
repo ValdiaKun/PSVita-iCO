@@ -76,3 +76,13 @@ target_link_libraries(mouse_camera_test PRIVATE ico_input)
 if(ICO_RUN_TESTS)
     add_test(NAME mouse_camera COMMAND mouse_camera_test)
 endif()
+
+# Native Vita controller adapter: exercise its mapping with a mocked sceCtrl
+# API on host builds, without requiring Vita hardware or SDK headers.
+if(ICO_RUN_TESTS AND NOT CMAKE_CROSSCOMPILING)
+    add_executable(vita_input_test test/input_vita_test.c input_vita.c)
+    target_include_directories(vita_input_test BEFORE PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/test/mock")
+    target_compile_options(vita_input_test PRIVATE ${ICO_SEMANTIC_OPTIONS} ${ICO_PORT_WARNINGS})
+    add_test(NAME vita_input COMMAND vita_input_test)
+endif()
