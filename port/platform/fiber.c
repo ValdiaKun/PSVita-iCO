@@ -1,8 +1,8 @@
 /*
  * port/platform/fiber.c
  *
- * minicoro's implementation and the stack allocator with a guard page. See
- * fiber.h.
+ * minicoro's implementation and the platform-conditional stack allocator.
+ * See fiber.h.
  */
 #define MINICORO_IMPL
 #define MCO_NO_DEFAULT_ALLOCATOR
@@ -22,8 +22,13 @@
  */
 #if (defined(MCO_USE_ASM) || defined(MCO_USE_UCONTEXT)) && \
     (defined(_WIN32) || defined(__unix__) || defined(__APPLE__)) && \
-    !defined(__vita__) && !defined(ICO_VITA_TARGET)
+    !defined(__vita__) && !defined(__psp2__) && !defined(ICO_VITA_TARGET)
 #define ICO_FIBER_GUARD 1
+#endif
+
+#if (defined(ICO_VITA_TARGET) || defined(__vita__) || defined(__psp2__)) && \
+    defined(ICO_FIBER_GUARD)
+#error "Vita fiber stacks must not use the POSIX guard-page allocator"
 #endif
 
 #if defined(_WIN32) && defined(ICO_FIBER_GUARD)
