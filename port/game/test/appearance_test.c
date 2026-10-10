@@ -188,6 +188,21 @@ static void testIdentity(void)
               ico_appearance_character(ICO_APP_YORDA_SKIN) == 1 &&
               ico_appearance_character(ICO_APP_YORDA_DRESS) == 1,
           "character");
+    const IcoAppPart bad_low = (IcoAppPart)-1;
+    const IcoAppPart bad_high = (IcoAppPart)ICO_APP_PART_COUNT;
+    CHECK(!ico_appearance_is_skin(bad_low) && !ico_appearance_is_skin(bad_high),
+          "out-of-range parts are not skin parts");
+    CHECK(ico_appearance_character(bad_low) == 0 && ico_appearance_character(bad_high) == 0,
+          "out-of-range parts have no character");
+    CHECK(ico_appearance_choices(bad_low) == 0 && ico_appearance_choices(bad_high) == 0,
+          "out-of-range parts have no choices");
+    CHECK(ico_appearance_get(bad_low) == 0 && ico_appearance_get(bad_high) == 0,
+          "out-of-range parts read as Original");
+    const unsigned int serial_before_bad_set = ico_appearance_serial();
+    ico_appearance_set(bad_low, 1);
+    ico_appearance_set(bad_high, 1);
+    CHECK(ico_appearance_serial() == serial_before_bad_set,
+          "out-of-range parts are ignored by setters");
 }
 
 static void testCovers(void)

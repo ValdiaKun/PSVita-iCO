@@ -84,7 +84,9 @@ static unsigned int s_warned; /* a bit per part: an unknown value logged */
 
 static int partOk(IcoAppPart p)
 {
-    return (int)p >= 0 && (int)p < ICO_APP_PART_COUNT;
+    /* Enum representation may be unsigned on ARM; conversion also rejects
+       negative/out-of-range values without a tautological signed check. */
+    return (unsigned int)p < (unsigned int)ICO_APP_PART_COUNT;
 }
 
 int ico_appearance_is_skin(IcoAppPart p)
