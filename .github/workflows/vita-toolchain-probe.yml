@@ -278,7 +278,7 @@ jobs:
           set -euo pipefail
           cc="$VITASDK/bin/arm-vita-eabi-gcc"
           root="$GITHUB_WORKSPACE"
-          for source in arena.c pace_policy.c hotkeys.c host_fs.c fpenv.c clock.c hwregs.c vsync_hooks.c; do
+          for source in arena.c pace_policy.c hotkeys.c host_fs.c host_config.c fpenv.c clock.c hwregs.c vsync_hooks.c; do
             object="$RUNNER_TEMP/ico_platform_${source%.c}_vita.o"
             "$cc" -std=gnu11 -Wall -Wextra -Werror -O2 \
               -fno-strict-aliasing -ffp-contract=off -fno-fast-math \
