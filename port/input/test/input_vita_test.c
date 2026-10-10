@@ -41,6 +41,7 @@ int main(void)
 {
     assert(ico_input_vita_init() == 0);
     assert(live_state == 1);
+
     memset(&next_sample, 0, sizeof(next_sample));
     next_sample.lx = 255;
     next_sample.ly = 0;
@@ -48,10 +49,28 @@ int main(void)
     next_sample.ry = 128;
     next_sample.buttons = SCE_CTRL_CROSS | SCE_CTRL_START | SCE_CTRL_LTRIGGER;
     assert(ico_input_vita_update() == 0);
-    assert(published.buttons == (ICO_PAD_CROSS | ICO_PAD_START | ICO_PAD_L2));
+    assert(published.buttons == (ICO_PAD_CROSS | ICO_PAD_START | ICO_PAD_L1));
     assert(published.menu_buttons == published.buttons);
     assert(published.lx == 1.0f && published.ly == -1.0f);
     assert(published.rx == 0.0f && published.ry == 0.0f);
+
+    /* Every physical button has a defined PS2-pad mapping. Vita shoulders
+       are L1/R1; its built-in controller has no separate L2/R2 buttons. */
+    next_sample.buttons = SCE_CTRL_SELECT | SCE_CTRL_START |
+                          SCE_CTRL_UP | SCE_CTRL_RIGHT | SCE_CTRL_DOWN | SCE_CTRL_LEFT |
+                          SCE_CTRL_LTRIGGER | SCE_CTRL_RTRIGGER | SCE_CTRL_L3 | SCE_CTRL_R3 |
+                          SCE_CTRL_TRIANGLE | SCE_CTRL_CIRCLE |
+                          SCE_CTRL_CROSS | SCE_CTRL_SQUARE;
+    next_sample.lx = 127;
+    next_sample.ly = 129;
+    assert(ico_input_vita_update() == 0);
+    assert(published.buttons == (ICO_PAD_SELECT | ICO_PAD_START |
+                                 ICO_PAD_UP | ICO_PAD_RIGHT | ICO_PAD_DOWN | ICO_PAD_LEFT |
+                                 ICO_PAD_L1 | ICO_PAD_R1 | ICO_PAD_L3 | ICO_PAD_R3 |
+                                 ICO_PAD_TRIANGLE | ICO_PAD_CIRCLE |
+                                 ICO_PAD_CROSS | ICO_PAD_SQUARE));
+    assert(published.lx == (-1.0f / 128.0f));
+    assert(published.ly == (1.0f / 127.0f));
 
     read_result = 0;
     assert(ico_input_vita_update() == -1);
