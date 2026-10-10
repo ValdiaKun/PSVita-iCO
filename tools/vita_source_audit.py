@@ -109,6 +109,13 @@ def main() -> int:
             if include.is_dir():
                 cmd.extend(["-I", str(include)])
         cmd.extend(["-I", str(root / "port" / "compat")])
+        # Mirror include paths added to these object libraries by port/game
+        # and port/ui; those target-specific paths are not in ico_include_dirs.
+        if prog in ("common", "fumi", "script", "sugipon"):
+            cmd.extend(["-I", str(root / "port" / "include")])
+        if prog == "common":
+            cmd.extend(["-I", str(root / "port" / "ui")])
+        cmd.append("-O2")
         cmd.append(f"-fmacro-prefix-map={root}/ico2/{prog}/=")
         if rel == "ico2/common/src/main.c":
             cmd.append("-Dmain=ico_game_main")
