@@ -15,9 +15,10 @@
  * SDL, the renderer and the host libc.
  *
  * ICO_FPTRAP (the fptrap preset) also unmasks the divide-by-zero and invalid
- * exceptions in simulation mode, so the first such operation stops the
- * program (SIGFPE on Linux, a structured exception on Windows) at the
- * instruction that raised it.
+ * exceptions in simulation mode on platforms whose FPU supports traps (SIGFPE
+ * on Linux, a structured exception on Windows). ARMv7 Cortex-A9 VFPv3 is
+ * trapless, so its implementation rejects ICO_FPTRAP instead of pretending it
+ * can stop at the offending instruction.
  */
 #ifndef ICO_PLATFORM_FPENV_H
 #define ICO_PLATFORM_FPENV_H

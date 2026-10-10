@@ -276,6 +276,25 @@ jobs:
             printf 'Verified ARMv7 render implementation object: %s\n' "$object"
           done
 
+      - name: Cross-compile portable platform services
+        shell: bash
+        run: |
+          set -euo pipefail
+          cc="$VITASDK/bin/arm-vita-eabi-gcc"
+          root="$GITHUB_WORKSPACE"
+          for source in arena.c pace_policy.c hotkeys.c host_fs.c fpenv.c; do
+            object="$RUNNER_TEMP/ico_platform_${source%.c}_vita.o"
+            "$cc" -std=gnu11 -Wall -Wextra -Werror -O2 \
+              -fno-strict-aliasing -ffp-contract=off -fno-fast-math \
+              -I "$root/port/platform" \
+              -I "$root/port/compat" \
+              -c "$root/port/platform/$source" -o "$object"
+            header="$("$VITASDK/bin/arm-vita-eabi-readelf" -h "$object")"
+            grep -Eq 'Class:[[:space:]]+ELF32' <<< "$header"
+            grep -Eq 'Machine:[[:space:]]+ARM' <<< "$header"
+            printf 'Verified ARMv7 platform service object: %s\\n' "$object"
+          done
+
   softdouble-regression:
     runs-on: ubuntu-24.04
     timeout-minutes: 15

@@ -77,6 +77,49 @@ unsigned long long ico_fpenv_raw(void)
     return fpcr_get();
 }
 
+#elif defined(__arm__) && defined(__VFP_FP__)
+/*
+ * Vita's Cortex-A9 uses the ARMv7 VFP FPSCR. It has the same rounding-mode
+ * and flush-to-zero controls as AArch64 FPCR, but its VFPv3 implementation
+ * does not support trapping floating-point exceptions. Reject ICO_FPTRAP
+ * explicitly rather than silently promising traps that the hardware cannot
+ * deliver.
+ */
+#if defined(ICO_FPTRAP)
+#error "ICO_FPTRAP is unsupported on ARMv7 VFPv3 (floating-point traps are unavailable)"
+#endif
+
+#define FPSCR_RZ (3u << 22) /* rounding control: toward zero */
+#define FPSCR_FZ (1u << 24) /* flush denormal inputs/results to zero */
+#define FPSCR_MODE_MASK (FPSCR_RZ | FPSCR_FZ)
+
+static unsigned int fpscr_get(void)
+{
+    unsigned int v;
+    __asm__ __volatile__("vmrs %0, fpscr" : "=r"(v));
+    return v;
+}
+
+static void fpscr_set(unsigned int v)
+{
+    __asm__ __volatile__("vmsr fpscr, %0" : : "r"(v));
+}
+
+void ico_fpenv_sim_enter(void)
+{
+    fpscr_set((fpscr_get() & ~FPSCR_MODE_MASK) | FPSCR_RZ | FPSCR_FZ);
+}
+
+void ico_fpenv_host_enter(void)
+{
+    fpscr_set(fpscr_get() & ~FPSCR_MODE_MASK);
+}
+
+unsigned long long ico_fpenv_raw(void)
+{
+    return fpscr_get();
+}
+
 #else
 #error "port/platform/fpenv.c: no floating-point mode code for this architecture"
 #endif
