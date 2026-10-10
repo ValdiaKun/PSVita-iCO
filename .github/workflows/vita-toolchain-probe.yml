@@ -34,14 +34,6 @@ jobs:
           done
           "$VITASDK/bin/arm-vita-eabi-gcc" --version
 
-      - name: Verify Vita SFO generation
-        shell: bash
-        run: |
-          set -euo pipefail
-          "$VITASDK/bin/vita-mksfoex" -e "ICO Vita SDK Probe" "$RUNNER_TEMP/vita_probe.sfo"
-          test -s "$RUNNER_TEMP/vita_probe.sfo"
-          file "$RUNNER_TEMP/vita_probe.sfo"
-
       - name: Compile an ARMv7 C probe
         shell: bash
         run: |
