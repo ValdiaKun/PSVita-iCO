@@ -35,6 +35,17 @@ add_executable(mix_gain_test test/mix_gain_test.c)
 target_compile_options(mix_gain_test PRIVATE ${ICO_SEMANTIC_OPTIONS} ${ICO_PORT_WARNINGS})
 target_link_libraries(mix_gain_test PRIVATE ico_audio)
 
+# Exercise the Vita sink's fixed-size chunking without Vita hardware. The
+# mock header/API verifies frame ordering, software volume, and output failure
+# handling on ordinary host builds.
+if(ICO_RUN_TESTS AND NOT CMAKE_CROSSCOMPILING)
+    add_executable(vita_audio_buffer_test test/out_vita_test.c out_vita.c volume.c)
+    target_include_directories(vita_audio_buffer_test BEFORE PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/test/mock")
+    target_compile_options(vita_audio_buffer_test PRIVATE ${ICO_SEMANTIC_OPTIONS} ${ICO_PORT_WARNINGS})
+    add_test(NAME vita_audio_buffer COMMAND vita_audio_buffer_test)
+endif()
+
 if(ICO_RUN_TESTS)
     add_test(NAME volume COMMAND volume_test)
     add_test(NAME mix_gain COMMAND mix_gain_test)

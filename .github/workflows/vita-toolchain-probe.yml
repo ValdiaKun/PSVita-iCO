@@ -91,21 +91,6 @@ jobs:
             printf 'Verified ARMv7 object: %s\n' "$object"
           done
 
-      - name: Cross-compile native Vita audio output
-        shell: bash
-        run: |
-          set -euo pipefail
-          cc="$VITASDK/bin/arm-vita-eabi-gcc"
-          root="$GITHUB_WORKSPACE"
-          object="$RUNNER_TEMP/ico_out_vita_vita.o"
-          "$cc" -std=gnu11 -Wall -Wextra -Werror -O2 \
-            -I "$root/port/audio" \
-            -c "$root/port/audio/out_vita.c" -o "$object"
-          header="$("$VITASDK/bin/arm-vita-eabi-readelf" -h "$object")"
-          grep -Eq 'Class:[[:space:]]+ELF32' <<< "$header"
-          grep -Eq 'Machine:[[:space:]]+ARM' <<< "$header"
-          printf 'Verified ARMv7 native audio output object: %s\n' "$object"
-
       - name: Cross-compile native Vita audio sink and integration
         shell: bash
         run: |
@@ -354,6 +339,19 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+
+      - name: Build and run Vita audio block regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          cc -std=gnu11 -Wall -Wextra -Werror -O2 \
+            -I "$GITHUB_WORKSPACE/port/audio/test/mock" \
+            -I "$GITHUB_WORKSPACE/port/audio" \
+            "$GITHUB_WORKSPACE/port/audio/test/out_vita_test.c" \
+            "$GITHUB_WORKSPACE/port/audio/out_vita.c" \
+            "$GITHUB_WORKSPACE/port/audio/volume.c" \
+            -o "$RUNNER_TEMP/vita_audio_buffer_test"
+          "$RUNNER_TEMP/vita_audio_buffer_test"
 
       - name: Configure isolated host regression test
         shell: bash

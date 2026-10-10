@@ -5,7 +5,8 @@
  * simulated vsync the SPU2 renders the vsync's 48 kHz frames (960 at 50 Hz,
  * 800.8 on average at 59.94 Hz) and hands them to a sink: native Vita audio
  * (out_vita.c), the SDL3 device (window build, out_sdl.c), a WAV file
- * (ini audio_dump=), or nothing (headless).  The SNDN2DRV host keeps running in every mode, since
+ * (ini audio_dump=), or nothing (headless). The SNDN2DRV host keeps running
+ * in every mode, since
  * the game reads its envelopes and stream offsets, so a headless run is the
  * same with or without a sink.
  *
