@@ -66,7 +66,11 @@ void ico_diag_init(const char *path)
         log_path[n] = '\0';
         log_file = fopen(log_path, "ab");
     }
-    if (log_file == NULL) log_file = stderr;
+    if (log_file == NULL) {
+        /* Do not advertise a path that could not actually be opened. */
+        log_path[0] = '\0';
+        log_file = stderr;
+    }
     inited = 1;
     ico_diag_log("diagnostics: Vita logging backend; crash handlers, stack unwinding, process-memory sampling and watchdog are unavailable");
 }

@@ -17,6 +17,7 @@ on:
   pull_request:
     paths:
       - ".github/workflows/vita-toolchain-probe.yml"
+      - "CMakeLists.txt"
       - "docs/PSVITA_PORTING.md"
       - "port/**"
       - "tools/vita_source_audit.py"
