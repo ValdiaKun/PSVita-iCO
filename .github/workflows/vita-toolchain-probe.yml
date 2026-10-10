@@ -1,0 +1,53 @@
+name: vita-toolchain-probe
+
+on:
+  push:
+    branches: [vita/feasibility-audit]
+    paths:
+      - ".github/workflows/vita-toolchain-probe.yml"
+      - "docs/PSVITA_PORTING.md"
+  pull_request:
+    paths:
+      - ".github/workflows/vita-toolchain-probe.yml"
+      - "docs/PSVITA_PORTING.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sdk-probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    container:
+      image: vitasdk/vitasdk:2026.08
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify VitaSDK tools and ARMv7 compiler
+        shell: bash
+        run: |
+          set -euo pipefail
+          : "${VITASDK:?VITASDK must be set by the VitaSDK container}"
+          test -x "$VITASDK/bin/arm-vita-eabi-gcc"
+          test -x "$VITASDK/bin/vita-elf-create"
+          test -x "$VITASDK/bin/vita-make-fself"
+          test -x "$VITASDK/bin/vita-mksfoex"
+          test -x "$VITASDK/bin/vita-pack-vpk"
+          "$VITASDK/bin/arm-vita-eabi-gcc" --version
+          "$VITASDK/bin/vita-mksfoex" --help >/dev/null
+
+      - name: Compile an ARMv7 C probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/vita_probe.c" <<'EOF'
+          #include <stdint.h>
+          uint32_t vita_probe(uint32_t value) { return (value << 1) | (value >> 31); }
+          EOF
+          "$VITASDK/bin/arm-vita-eabi-gcc" \
+            -std=c11 -Wall -Wextra -Werror -O2 \
+            -c "$RUNNER_TEMP/vita_probe.c" \
+            -o "$RUNNER_TEMP/vita_probe.o"
+          file "$RUNNER_TEMP/vita_probe.o"
+          "$VITASDK/bin/arm-vita-eabi-readelf" -h "$RUNNER_TEMP/vita_probe.o"
