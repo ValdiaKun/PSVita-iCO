@@ -201,7 +201,7 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
-      - name: Cross-compile CPU-side renderer references
+      - name: Cross-compile Vita renderer translation units
         shell: bash
         run: |
           set -euo pipefail

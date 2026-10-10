@@ -1311,6 +1311,8 @@ static void testDateArea(void)
 
 int main(int argc, char **argv)
 {
+    CHECK(rd_target((RdTargetId)-1).id == 0, "negative render target ID rejected");
+    CHECK(rd_target(RD_TARGET_COUNT).id == 0, "render target count sentinel rejected");
     rd__set_not_implemented_fatal(true); /* a stub command replayed stops the test */
     const char *dir = argc > 1 ? argv[1] : ".";
     if (!rd__init_record_only(512, 512)) {
