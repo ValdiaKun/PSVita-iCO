@@ -24,7 +24,6 @@ static int release_calls;
 static int output_result;
 static int16_t captured[STEREO_SAMPLES];
 static int captured_valid;
-static int fake_volume = 256;
 
 static void check(int ok, const char *what)
 {
@@ -60,22 +59,6 @@ int sceAudioOutReleasePort(int port)
     check(port == 7, "release uses opened port");
     release_calls++;
     return 0;
-}
-
-int ico_audio_volume_q8(void)
-{
-    return fake_volume;
-}
-
-void ico_audio_scale(int16_t *dst, const int16_t *src, int count, int q8)
-{
-    int i;
-
-    q8 = q8 < 0 ? 0 : q8 > 256 ? 256 : q8;
-    for (i = 0; i < count; i++) {
-        int v = ((int)src[i] * q8 + 128) >> 8;
-        dst[i] = (int16_t)(v < -32768 ? -32768 : v > 32767 ? 32767 : v);
-    }
 }
 
 static void check_block(const int16_t *expected, const char *what)
@@ -135,7 +118,7 @@ int main(void)
     check(output_calls == 2, "176 pending plus 848 frames submit next block");
     check_block(expected, "second block preserves order");
 
-    fake_volume = 128;
+    ico_audio_set_volume(0.5);
     ico_audio_vita_push(loud, BLOCK_FRAMES);
     check(output_calls == 3, "full block submits immediately");
     check(captured_valid, "volume block captured");
