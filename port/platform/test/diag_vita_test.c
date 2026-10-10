@@ -43,6 +43,15 @@ int main(void)
     failures += check(ico_diag_float_faults() == 2, "fault count must count every occurrence");
     failures += check(ico_diag_process_memory(&rss, &peak) == -1 && rss == -1 && peak == -1,
                       "unsupported process memory must be reported as unavailable");
+    ico_diag_set_failure("unit failure %d", 7);
+    ico_diag_name_func((void *)&fake_time_us, "test-worker");
+    ico_host_thread_func(1, (void *)&fake_time_us, 3);
+    ico_diag_set_exit_hook((void (*)(const char *))status);
+    ico_diag_set_effects_program(1);
+    ico_diag_present_enter();
+    fake_time_us += 150000ull;
+    ico_diag_present_leave();
+    ico_diag_watchdog_pause(1);
     ico_diag_start(5, 10);
     ico_diag_main_thread_end();
     f = fopen(path, "rb");
@@ -59,6 +68,12 @@ int main(void)
     failures += check(strstr(log, "watchdog implementation is outstanding") != NULL,
                       "watchdog request must not be reported as started");
     failures += check(strstr(log, "floating-point fault #1") != NULL, "first floating-point fault must be logged");
+    failures += check(strstr(log, "last failure: unit failure 7") != NULL, "failure context must be logged");
+    failures += check(strstr(log, "function=test-worker") != NULL, "registered game-thread names must be logged");
+    failures += check(strstr(log, "fatal exit hook registered but not armed") != NULL,
+                      "unsupported fatal dispatch must be disclosed");
+    failures += check(strstr(log, "slow present: 150.0 ms effects_program=1") != NULL,
+                      "long presents must be measured and logged");
     remove(path);
     if (failures != 0) return 1;
     puts("Vita diagnostics mock regression passed");
