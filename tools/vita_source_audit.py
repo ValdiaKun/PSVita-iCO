@@ -43,7 +43,7 @@ WARNING_FLAGS = (
 def source_lists(path: Path) -> dict[str, list[str]]:
     text = path.read_text(encoding="utf-8")
     pattern = re.compile(
-        r"set\((ICO_SOURCES_[A-Za-z0-9_]+|ICO_EE_ONLY_SOURCES)\s*([\s\S]*?)\n\)"
+        r"set\((ICO_SOURCES_[A-Za-z0-9_]+|ICO_EE_ONLY_SOURCES)[ \t]*([\s\S]*?)\n\)"
     )
     result: dict[str, list[str]] = {}
     for match in pattern.finditer(text):
