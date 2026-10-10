@@ -50,11 +50,13 @@ Vita game build:
 - **Audio:** `port/audio/CMakeLists.txt` separates the software SPU2 and
   ADPCM/mixing logic from the SDL output sink (`out_sdl.c`). A Vita audio sink
   and lifecycle integration are still required.
-- **Measured ARMv7 scope:** the CI probe cross-compiles `port/math/ps2float.c`
-  plus the portable SPU2 core (`adpcm.c`, `spu2.c`, `spu2_sd.c`,
-  `spu2_tables.c`, `volume.c`, `mix_gain.c`) with `-Wall -Wextra -Werror` and
-  checks every object header for ELF32/ARM. This verifies those translation
-  units only; it is not a game-wide compile audit.
+- **Measured ARMv7 scope:** the CI probe cross-compiles `port/math/ps2float.c`,
+  the portable SPU2 core (`adpcm.c`, `spu2.c`, `spu2_sd.c`, `spu2_tables.c`,
+  `volume.c`, `mix_gain.c`), and the math implementation units (`cloth.c`,
+  `libvu0.c`, `matrix.c`, `matrix_drive.c`, `matrix_stack.c`, `quaternion.c`,
+  `softdouble.c`) with `-Wall -Wextra -Werror`; each resulting object is checked
+  for ELF32/ARM. This verifies those translation units only; it is not a
+  game-wide compile audit or a linked executable.
 
 ## Feasibility risks to measure early
 
@@ -128,4 +130,4 @@ the host, and small on-device smoke tests for Vita-specific calls.
 
 ## Immediate next action
 
-Extend the VitaSDK-only CI probe from the confirmed minimal VPK build to cross-compile selected portable production modules with strict warnings. Once that passes, add a Vita-specific CMake toolchain/preset without changing desktop/Android workflows, then expand the source allowlist incrementally. A green smoke-test VPK is not an ICO game build.
+Continue expanding the VitaSDK-only ARMv7 compile audit across portable production modules with strict warnings. The probe now covers the math implementation as well as SPU2/audio arithmetic; after its CI result is inspected, add an isolated Vita-specific CMake toolchain/preset and a source allowlist without changing desktop/Android workflows. A green smoke-test VPK is not an ICO game build.
