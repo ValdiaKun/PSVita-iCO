@@ -494,7 +494,22 @@ jobs:
             echo "Compilation failed, but not for a known desktop-only diagnostic dependency." >&2
             exit 1
           fi
-          echo "Confirmed: diag_host.c still has desktop-only dependencies; this is an explicit porting blocker, not a passing Vita implementation."
+          echo "Confirmed: desktop diagnostics remain isolated from the Vita source selection."
+
+      - name: Cross-compile Vita diagnostics backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$GITHUB_WORKSPACE"
+          cc="$VITASDK/bin/arm-vita-eabi-gcc"
+          object="$RUNNER_TEMP/diag_vita.o"
+          "$cc" -std=gnu11 -Wall -Wextra -Werror -O2 \
+            -I "$root/port/platform" -I "$root/port/compat" \
+            -c "$root/port/platform/diag_vita.c" -o "$object"
+          header="$("$VITASDK/bin/arm-vita-eabi-readelf" -h "$object")"
+          grep -Eq 'Class:[[:space:]]+ELF32' <<< "$header"
+          grep -Eq 'Machine:[[:space:]]+ARM' <<< "$header"
+          echo "Verified ARMv7 Vita diagnostics object: $object"
 
   vita-arena-mock-regression:
     runs-on: ubuntu-24.04
