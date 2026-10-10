@@ -253,6 +253,28 @@ jobs:
             grep -Eq 'Machine:[[:space:]]+ARM' <<< "$header"
             printf 'Verified ARMv7 render core object: %s\n' "$object"
           done
+          # Extend coverage to the recording/replay, presentation, and post-process
+          # units that use the RHI interface but remain compile-only here.
+          for source in rd_core.c rd_dump.c rd_post.c rd_shadow.c rd_water.c rd_present.c rd_blur.c rd_crt.c rd_png.c; do
+            object="$RUNNER_TEMP/ico_render_core_${source%.c}_vita.o"
+            "$cc" -std=gnu11 -Wall -Wextra -Werror -O2 \
+              -fno-strict-aliasing -ffp-contract=off -fno-fast-math \
+              -I "$root/port/math" \
+              -I "$root/port/render" \
+              -I "$root/port/render/vu1_ref" \
+              -I "$root/port/rhi" \
+              -I "$root/port/shaders" \
+              -I "$root/port/fmv" \
+              -I "$root/port/platform" \
+              -I "$root/port/compat" \
+              -I "$root/port/json" \
+              -I "$root/port/miniz" \
+              -c "$root/port/render/$source" -o "$object"
+            header="$("$VITASDK/bin/arm-vita-eabi-readelf" -h "$object")"
+            grep -Eq 'Class:[[:space:]]+ELF32' <<< "$header"
+            grep -Eq 'Machine:[[:space:]]+ARM' <<< "$header"
+            printf 'Verified ARMv7 render implementation object: %s\n' "$object"
+          done
 
   softdouble-regression:
     runs-on: ubuntu-24.04
