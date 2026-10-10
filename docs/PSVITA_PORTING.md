@@ -50,18 +50,21 @@ Vita game build:
 - **Audio:** `port/audio/CMakeLists.txt` separates the software SPU2 and
   ADPCM/mixing logic from the SDL output sink (`out_sdl.c`). A Vita audio sink
   and lifecycle integration are still required.
-- **Cross-compile audit scope:** the VitaSDK CI probe compiles `port/math/ps2float.c`,
-  the portable SPU2 core (`adpcm.c`, `spu2.c`, `spu2_sd.c`, `spu2_tables.c`,
-  `volume.c`, `mix_gain.c`), seven additional math units, and selected portable
-  input units with strict warnings; every produced object is checked for
-  ELF32/ARM. The audit does not compile/link the complete game.
-- **ARMv7 blocker found and addressed, verification pending:** the first expanded
-  math audit failed in `port/math/softdouble.c` because ARMv7 GCC 15.2 rejects
-  `unsigned __int128`. Multiplication now uses explicit 32-bit limbs to produce
-  a 128-bit result, and division uses restoring quotient generation with a
-  bounded 64-bit remainder. A host bit-exact oracle regression job was added;
-  its result and the new VitaSDK run must pass before treating this fix as
-  verified.
+- **Verified ARMv7 compile scope (CI run 38018639427):** VitaSDK GCC 15.2 compiled
+  `port/math/ps2float.c`; the portable SPU2 core (`adpcm.c`, `spu2.c`,
+  `spu2_sd.c`, `spu2_tables.c`, `volume.c`, `mix_gain.c`); seven math units
+  (`cloth.c`, `libvu0.c`, `matrix.c`, `matrix_drive.c`, `matrix_stack.c`,
+  `quaternion.c`, `softdouble.c`); and nine portable input units (`bindings.c`,
+  `input_record.c`, `mouse_camera.c`, `mouse_look.c`, `pad_host.c`,
+  `pad_script.c`, `pointer.c`, `touch.c`, `vpad.c`) with strict warnings. Every
+  object was verified as ELF32/ARM. This is still a selected translation-unit
+  audit, not a complete game compile or link.
+- **ARMv7 compatibility fix verified:** the expanded audit exposed that ARMv7
+  GCC 15.2 rejects `unsigned __int128` in `softdouble.c`. Multiplication now
+  uses explicit 32-bit limbs to form the 128-bit product, and division uses
+  restoring quotient generation with a bounded 64-bit remainder. The host
+  bit-exact softdouble oracle test passed (CI run 38018639427), and the updated
+  `softdouble.c` compiled for ARMv7 with `-Wall -Wextra -Werror`.
 
 ## Feasibility risks to measure early
 
@@ -135,4 +138,4 @@ the host, and small on-device smoke tests for Vita-specific calls.
 
 ## Immediate next action
 
-Continue expanding the VitaSDK-only ARMv7 compile audit across portable production modules with strict warnings. The probe now covers the math implementation as well as SPU2/audio arithmetic; after its CI result is inspected, add an isolated Vita-specific CMake toolchain/preset and a source allowlist without changing desktop/Android workflows. A green smoke-test VPK is not an ICO game build.
+Next, add a reproducible source-only cross-compile audit for the 214 game translation units in `config/link_order.pal.txt`, preserving each programmer directory's include order and the host build's semantic flags. Use its first actionable compiler failures to establish the explicit Vita source allowlist, then design platform-service and renderer integration. Do not treat the smoke-test VPK as an ICO game build.
