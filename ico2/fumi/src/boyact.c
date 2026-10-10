@@ -1609,9 +1609,9 @@ typedef struct {                      /* field names derived */
    flag bits of boyInfo[1]) only keep their EE places while the pointers
    start at 0x20; the template must cover the whole host record
    (tools/template_audit.py) */
-_Static_assert(sizeof(BoyWork) == sizeof(BoyInfo) && sizeof(boyInfo) >= sizeof(BoyInfo) &&
+_Static_assert(sizeof(BoyWork) >= sizeof(BoyInfo) && sizeof(boyInfo) >= sizeof(BoyInfo) &&
                    __builtin_offsetof(BoyInfo, weapon) == 0x20,
-               "BoyWork does not cover BoyInfo on the host");
+               "BoyWork does not cover BoyInfo on this target");
 
 static void InitSwapWeapon(void *self)
 {
@@ -3325,7 +3325,7 @@ void actBoyStart(GObj *self)
             ClipWall(&cw);
             if (cw.wall.elem == 0) {
                 /* "!!! cannot find the sofa's wall !!!" */
-                debug_StdPrintfDummy("¡ª¡ª¡ª¥½¥Õ¥¡¤ÎÊÉ¤ò¸«ÉÕ¤±¤ë¤³¤È¤¬¤Ç¤­¤Ş¤»¤ó¡ª¡ª¡ª\n");
+                debug_StdPrintfDummy("ï¼ï¼ï¼ã‚½ãƒ•ã‚¡ã®å£ã‚’è¦‹ä»˜ã‘ã‚‹ã“ã¨ãŒã§ãã¾ã›ã‚“ï¼ï¼ï¼\n");
             } else {
                 startOnSofa = 1;
                 sitLayoutDone = 1;

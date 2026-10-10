@@ -72,6 +72,28 @@ def main() -> int:
     lists = source_lists(root / "cmake" / "IcoSources.cmake")
     sources = [s for prog in PROGRAMMERS for s in lists[f"ICO_SOURCES_{prog}"]]
     ee_only = lists.get("ICO_EE_ONLY_SOURCES", [])
+
+    # Cross-check the parsed lists against the canonical link-order inventory.
+    # This catches parser/list drift before a partial audit can look complete.
+    inventory = []
+    for line in (root / "config" / "link_order.pal.txt").read_text(encoding="utf-8").splitlines():
+        fields = line.split("#", 1)[0].strip().split()
+        if fields and fields[0].startswith("ico2/") and fields[0].endswith(".c"):
+            inventory.append(fields[0])
+    expected_game = [path for path in inventory if not path.startswith("ico2/ito/mpeg/")]
+    expected_ee_only = [path for path in inventory if path.startswith("ico2/ito/mpeg/")]
+    if len(sources) != len(set(sources)) or set(sources) != set(expected_game):
+        missing = sorted(set(expected_game) - set(sources))
+        extra = sorted(set(sources) - set(expected_game))
+        raise ValueError(f"source-list mismatch: missing={missing}, extra={extra}")
+    if set(ee_only) != set(expected_ee_only):
+        raise ValueError("ICO_EE_ONLY_SOURCES does not match the canonical link-order inventory")
+    generated_check = subprocess.run(
+        [sys.executable, str(root / "tools" / "gen_sources.py"), "--check"],
+        cwd=root, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False,
+    )
+    if generated_check.returncode:
+        raise ValueError("generated source lists are stale: " + generated_check.stdout.strip())
     missing_files = [s for s in sources if not (root / s).is_file()]
     if missing_files:
         raise FileNotFoundError("source list contains missing files: " + ", ".join(missing_files))
