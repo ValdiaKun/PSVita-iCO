@@ -39,6 +39,8 @@ int main(void)
     CHECK(!ico_path_is_absolute("relative/Ico_PAL.iso"));
     CHECK(ico_path_join(joined, sizeof(joined), data, "Ico_PAL.iso") == 0);
     CHECK(strcmp(joined, "host_config_vita_test_dir/Ico_PAL.iso") == 0);
+    CHECK(ico_path_join(joined, sizeof(joined), "app0:", "data/ico.o2r") == 0);
+    CHECK(strcmp(joined, "app0:/data/ico.o2r") == 0);
     CHECK(ico_rmdir(data) == 0);
     if (failures != 0) {
         fprintf(stderr, "Vita host-config path regression: %d failures\n", failures);

@@ -63,7 +63,7 @@ endif()
 # data directory is overridden to a disposable relative folder for this test.
 add_executable(host_config_vita_test test/host_config_vita_test.c host_config.c)
 target_compile_definitions(host_config_vita_test PRIVATE
-    ICO_HOST_VITA=1 ICO_HOST_VITA_DATA_DIR=\\\"host_config_vita_test_dir\\\")
+    ICO_HOST_VITA=1 ICO_HOST_VITA_DATA_DIR=\"host_config_vita_test_dir\")
 target_include_directories(host_config_vita_test PRIVATE "${ICO_COMPAT_DIR}")
 target_compile_options(host_config_vita_test PRIVATE ${ICO_SEMANTIC_OPTIONS} ${ICO_PORT_WARNINGS})
 target_link_libraries(host_config_vita_test PRIVATE ico_platform)
