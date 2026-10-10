@@ -25,6 +25,36 @@ hardware or a suitable emulator.
   user-provided PAL disc image, and no disc image, ELF, extracted game assets,
   or asset-derived data may be committed.
 
+## Source-level compatibility findings
+
+These are confirmed from the current CMake files and source includes, not from a
+Vita game build:
+
+- **Build target:** the root `CMakeLists.txt` defines only the desktop/Android
+  host build, applies `ICO_HOST=1`, and conditionally selects a headless or SDL
+  window build. `CMakePresets.json` has no Vita preset. The new CI smoke project
+  is deliberately separate from the root build.
+- **Renderer:** `port/rhi/CMakeLists.txt` builds the Vulkan backend (and D3D12
+  for 64-bit Windows); the Vulkan device/swapchain paths include SDL3 Vulkan
+  surface support. The game's renderer therefore cannot be made Vita-compatible
+  by merely changing the compiler target or turning off D3D12. A Vita renderer
+  path and shader/RHI capability mapping remain a major blocker.
+- **Platform services:** `port/platform/CMakeLists.txt` adds host scheduling,
+  fiber, kernel and lifecycle code and links `Threads::Threads`. The windowed
+  executable also pulls in host-loop/window code. Vita needs a deliberate
+  platform implementation, not a wholesale reuse of these host files.
+- **Input:** `port/input/CMakeLists.txt` separates portable mapping, virtual-pad
+  and recording logic from `input_sdl.c`, which is only included for the SDL
+  window build. The portable mapping logic is a reuse candidate; a Vita
+  controller adapter still needs to be implemented and tested.
+- **Audio:** `port/audio/CMakeLists.txt` separates the software SPU2 and
+  ADPCM/mixing logic from the SDL output sink (`out_sdl.c`). A Vita audio sink
+  and lifecycle integration are still required.
+- **Measured ARMv7 scope:** the CI probe now cross-compiles
+  `port/math/ps2float.c` and `port/audio/adpcm.c` with `-Wall -Wextra -Werror`
+  and checks the object headers for ELF32/ARM. This proves only those two
+  translation units compile for the target; it is not a game-wide compile audit.
+
 ## Feasibility risks to measure early
 
 1. **Compiler/ABI:** unsupported host APIs, ARMv7 compiler errors, alignment,
