@@ -368,9 +368,9 @@ jobs:
           cc="$VITASDK/bin/arm-vita-eabi-gcc"
           root="$GITHUB_WORKSPACE"
           log="$RUNNER_TEMP/diag_host_vita_probe.log"
-          if "$cc" -std=gnu11 -Wall -Wextra -Werror -O2 \\
-              -I "$root/port/platform" -I "$root/port/compat" \\
-              -c "$root/port/platform/diag_host.c" \\
+          if "$cc" -std=gnu11 -Wall -Wextra -Werror -O2 \
+              -I "$root/port/platform" -I "$root/port/compat" \
+              -c "$root/port/platform/diag_host.c" \
               -o "$RUNNER_TEMP/diag_host_vita_probe.o" >"$log" 2>&1; then
             echo "Unexpected result: diag_host.c compiled unchanged for Vita." >&2
             exit 1
