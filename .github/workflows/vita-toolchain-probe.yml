@@ -353,6 +353,35 @@ jobs:
             printf 'Verified ARMv7 platform service object: %s\n' "$object"
           done
 
+  diagnostics-portability-audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    container:
+      image: vitasdk/vitasdk:2026.08
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Confirm desktop diagnostic implementation is not Vita-compilable unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          cc="$VITASDK/bin/arm-vita-eabi-gcc"
+          root="$GITHUB_WORKSPACE"
+          log="$RUNNER_TEMP/diag_host_vita_probe.log"
+          if "$cc" -std=gnu11 -Wall -Wextra -Werror -O2 \\
+              -I "$root/port/platform" -I "$root/port/compat" \\
+              -c "$root/port/platform/diag_host.c" \\
+              -o "$RUNNER_TEMP/diag_host_vita_probe.o" >"$log" 2>&1; then
+            echo "Unexpected result: diag_host.c compiled unchanged for Vita." >&2
+            exit 1
+          fi
+          cat "$log"
+          if ! grep -Eiq 'pthread\.h|ucontext\.h|pthread_getattr_np|pthread_kill|sigaltstack|/proc/self/status|dladdr' "$log"; then
+            echo "Compilation failed, but not for a known desktop-only diagnostic dependency." >&2
+            exit 1
+          fi
+          echo "Confirmed: diag_host.c still has desktop-only dependencies; this is an explicit porting blocker, not a passing Vita implementation."
+
   softdouble-regression:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
