@@ -847,7 +847,7 @@ void rd__temp_target_pool_clear(void)
 
 RdTarget rd_target(RdTargetId id)
 {
-    if ((int)id < 0 || id >= RD_TARGET_COUNT) {
+    if ((unsigned)id >= (unsigned)RD_TARGET_COUNT) {
         return (RdTarget){0};
     }
     return (RdTarget){(uint32_t)id + 1};
