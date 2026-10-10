@@ -385,10 +385,19 @@ jobs:
           make -C "$sample" -j2
           vpk="$sample/immediate_mode.vpk"
           test -s "$vpk"
-          listing="$(unzip -Z1 "$vpk")"
-          printf '%s\n' "$listing"
-          grep -qx 'eboot.bin' <<< "$listing"
-          grep -qx 'sce_sys/param.sfo' <<< "$listing"
+          python3 - "$vpk" <<'PY'
+          import sys
+          import zipfile
+
+          path = sys.argv[1]
+          required = {"eboot.bin", "sce_sys/param.sfo"}
+          with zipfile.ZipFile(path) as package:
+              names = set(package.namelist())
+          missing = required - names
+          if missing:
+              raise SystemExit(f"VPK missing required entries: {sorted(missing)}")
+          print("\\n".join(sorted(names)))
+          PY
           mkdir -p "$RUNNER_TEMP/vitaGL-artifact"
           cp "$vpk" "$RUNNER_TEMP/vitaGL-artifact/vitaGL-immediate-mode-probe.vpk"
           sha256sum "$RUNNER_TEMP/vitaGL-artifact/vitaGL-immediate-mode-probe.vpk"
