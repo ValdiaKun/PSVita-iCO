@@ -114,6 +114,7 @@ jobs:
               -I "$root" \
               -I "$root/port/input" \
               -I "$root/port/platform" \
+              -I "$root/port/game" \
               -I "$root/port/compat" \
               -I "$root/ico2/seki/include" \
               -I "$root/ico2/sugipon/include" \
