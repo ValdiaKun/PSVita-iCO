@@ -10,10 +10,12 @@
  * goes fiber -> scheduler -> fiber.
  *
  * Backends (minicoro's own selection, minicoro.h "MCO_USE_*"): assembly
- * switch on x86-64 Linux and Windows and arm64. Stacks are
- * ICO_FIBER_STACK_SIZE bytes. On the assembly backend the stack has a
- * no-access guard page directly below it, so an overflow faults instead of
- * corrupting the fiber's control block.
+ * switch on x86-64 Linux and Windows, ARM EABI, and arm64. Stacks are
+ * ICO_FIBER_STACK_SIZE bytes. Desktop Windows/POSIX builds use a no-access
+ * guard page below assembly/ucontext stacks where virtual-memory APIs are
+ * available. The Vita uses the plain allocator (no guard page yet) while
+ * retaining the ARM EABI context switch; ico_fiber_has_guard_page() reports
+ * the actual allocator behavior.
  *
  * Neither backend is relied on for the floating-point control state: the
  * assembly switch (x86-64 Windows included: minicoro.h picks MCO_USE_ASM for
