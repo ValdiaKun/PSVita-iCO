@@ -237,12 +237,33 @@ uint64_t ico_dsub(uint64_t a, uint64_t b)
     return sd_pack(sd_add_parts(sd_unpack(a), y));
 }
 
+/*
+ * A 64x64 -> 128-bit product using 32-bit limbs. GCC's ARMv7 target does not
+ * provide a native 128-bit integer type, so keep the EE double emulation
+ * independent of a host-only wide integer extension.
+ */
+static void sd_mul_wide(uint64_t a, uint64_t b, uint64_t *hi, uint64_t *lo)
+{
+    uint64_t a0 = (uint32_t)a;
+    uint64_t a1 = a >> 32;
+    uint64_t b0 = (uint32_t)b;
+    uint64_t b1 = b >> 32;
+    uint64_t p0 = a0 * b0;
+    uint64_t p1 = a0 * b1;
+    uint64_t p2 = a1 * b0;
+    uint64_t p3 = a1 * b1;
+    uint64_t middle = (p0 >> 32) + (uint32_t)p1 + (uint32_t)p2;
+
+    *lo = (middle << 32) | (uint32_t)p0;
+    *hi = p3 + (p1 >> 32) + (p2 >> 32) + (middle >> 32);
+}
+
 uint64_t ico_dmul(uint64_t a, uint64_t b)
 {
     SdNum x = sd_unpack(a);
     SdNum y = sd_unpack(b);
     int sign = x.sign != y.sign;
-    unsigned __int128 p;
+    uint64_t p_hi, p_lo;
     SdNum r;
 
     if (x.cls == SD_NAN) {
@@ -276,18 +297,18 @@ uint64_t ico_dmul(uint64_t a, uint64_t b)
         return sd_pack(y);
     }
 
-    /* two significands in [2^60, 2^61): the product is in [2^120, 2^122) */
-    p = (unsigned __int128)x.sig * y.sig;
+    /* two significands in [2^60, 2^61): product is in [2^120, 2^122) */
+    sd_mul_wide(x.sig, y.sig, &p_hi, &p_lo);
     r.cls = SD_NUM;
     r.sign = sign;
-    if (p >> 121) {
+    if (p_hi >> 57) {
         r.exp = x.exp + y.exp + 1;
-        r.sig = (uint64_t)(p >> 61);
-        r.sig = sd_settle_tie(r.sig, (p & ((((unsigned __int128)1) << 61) - 1)) != 0);
+        r.sig = (p_hi << 3) | (p_lo >> 61);
+        r.sig = sd_settle_tie(r.sig, (p_lo & ((1ull << 61) - 1)) != 0);
     } else {
         r.exp = x.exp + y.exp;
-        r.sig = (uint64_t)(p >> 60);
-        r.sig = sd_settle_tie(r.sig, (p & ((((unsigned __int128)1) << 60) - 1)) != 0);
+        r.sig = (p_hi << 4) | (p_lo >> 60);
+        r.sig = sd_settle_tie(r.sig, (p_lo & ((1ull << 60) - 1)) != 0);
     }
     return sd_pack(r);
 }
@@ -296,8 +317,8 @@ uint64_t ico_ddiv(uint64_t a, uint64_t b)
 {
     SdNum x = sd_unpack(a);
     SdNum y = sd_unpack(b);
-    unsigned __int128 n;
     uint64_t m1, q, rem;
+    int i;
 
     if (x.cls == SD_NAN) {
         return sd_pack(x);
@@ -326,10 +347,23 @@ uint64_t ico_ddiv(uint64_t a, uint64_t b)
         x.exp--;
         m1 <<= 1;
     }
-    /* the quotient's 61 bits, leading one at bit 60 */
-    n = (unsigned __int128)m1 << 60;
-    q = (uint64_t)(n / y.sig);
-    rem = (uint64_t)(n % y.sig);
+
+    /*
+     * m1/y.sig is in [1, 2). Generate its 60 fractional quotient bits by
+     * restoring division. The remainder stays below y.sig (< 2^61), so its
+     * left shift is safe in uint64_t. This replaces the 122-bit numerator and
+     * gives the same quotient and nonzero-remainder sticky bit.
+     */
+    q = 1;
+    rem = m1 - y.sig;
+    for (i = 0; i < 60; i++) {
+        rem <<= 1;
+        q <<= 1;
+        if (rem >= y.sig) {
+            rem -= y.sig;
+            q |= 1;
+        }
+    }
     x.sig = sd_settle_tie(q, rem != 0);
     return sd_pack(x);
 }
