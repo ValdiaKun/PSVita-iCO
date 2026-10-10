@@ -20,6 +20,11 @@ enum {
     ICO_VITA_AUDIO_CHANNELS = 2
 };
 
+_Static_assert(ICO_VITA_AUDIO_FRAMES % SCE_AUDIO_MIN_LEN == 0,
+               "Vita audio frame count must satisfy sceAudioOut granularity");
+_Static_assert(ICO_VITA_AUDIO_FRAMES <= SCE_AUDIO_MAX_LEN,
+               "Vita audio frame count exceeds sceAudioOut maximum");
+
 static int port = -1;
 static int16_t pending[ICO_VITA_AUDIO_QUEUE_FRAMES * ICO_VITA_AUDIO_CHANNELS];
 static int pending_frames;
@@ -31,7 +36,7 @@ int ico_audio_vita_open(void)
         return 0;
     }
     pending_frames = 0;
-    port = sceAudioOutOpenPort(SCE_AUDIO_OUT_PORT_TYPE_MAIN, ICO_VITA_AUDIO_FRAMES, 48000,
+    port = sceAudioOutOpenPort(SCE_AUDIO_OUT_PORT_TYPE_MAIN, ICO_VITA_AUDIO_FRAMES, SCE_AUDIO_OUT_SAMPLE_RATE_48000,
                                SCE_AUDIO_OUT_MODE_STEREO);
     if (port < 0) {
         fprintf(stderr, "audio: sceAudioOutOpenPort failed: 0x%08X\n", (unsigned int)port);

@@ -102,7 +102,7 @@ int main(void)
     check(ico_audio_vita_open() == 0, "open succeeds");
     check(open_type == SCE_AUDIO_OUT_PORT_TYPE_MAIN, "main audio port selected");
     check(open_frames == BLOCK_FRAMES, "fixed block length is 1024 frames");
-    check(open_rate == 48000, "sample rate is 48 kHz");
+    check(open_rate == SCE_AUDIO_OUT_SAMPLE_RATE_48000, "sample rate is 48 kHz");
     check(open_mode == SCE_AUDIO_OUT_MODE_STEREO, "stereo mode selected");
 
     ico_audio_vita_push(first, 600);
