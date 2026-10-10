@@ -172,6 +172,25 @@ jobs:
             printf 'Verified ARMv7 input object: %s\n' "$object"
           done
 
+      - name: Cross-compile native Vita controller adapter
+        shell: bash
+        run: |
+          set -euo pipefail
+          cc="$VITASDK/bin/arm-vita-eabi-gcc"
+          root="$GITHUB_WORKSPACE"
+          object="$RUNNER_TEMP/ico_input_vita_vita.o"
+          "$cc" -std=gnu11 -Wall -Wextra -Werror -O2 \
+            -I "$root/port/input" \
+            -I "$root/port/platform" \
+            -I "$root/port/config" \
+            -I "$root/port/game" \
+            -I "$root/port/compat" \
+            -c "$root/port/input/input_vita.c" -o "$object"
+          header="$("$VITASDK/bin/arm-vita-eabi-readelf" -h "$object")"
+          grep -Eq 'Class:[[:space:]]+ELF32' <<< "$header"
+          grep -Eq 'Machine:[[:space:]]+ARM' <<< "$header"
+          printf 'Verified ARMv7 Vita controller object: %s\\n' "$object"
+
       - name: Build and validate a minimal Vita VPK
         shell: bash
         run: |
@@ -352,6 +371,18 @@ jobs:
             "$GITHUB_WORKSPACE/port/audio/volume.c" \
             -o "$RUNNER_TEMP/vita_audio_buffer_test"
           "$RUNNER_TEMP/vita_audio_buffer_test"
+
+      - name: Build and run Vita controller mapping regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          cc -std=gnu11 -Wall -Wextra -Werror -O2 \
+            -I "$GITHUB_WORKSPACE/port/input/test/mock" \
+            -I "$GITHUB_WORKSPACE/port/input" \
+            "$GITHUB_WORKSPACE/port/input/test/input_vita_test.c" \
+            "$GITHUB_WORKSPACE/port/input/input_vita.c" \
+            -o "$RUNNER_TEMP/vita_input_test"
+          "$RUNNER_TEMP/vita_input_test"
 
       - name: Configure isolated host regression test
         shell: bash

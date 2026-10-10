@@ -43,6 +43,7 @@ Vita game build:
   fiber, kernel and lifecycle code and links `Threads::Threads`. The windowed
   executable also pulls in host-loop/window code. Vita needs a deliberate
   platform implementation, not a wholesale reuse of these host files.
+- **Native controller adapter (new):** `port/input/input_vita.c` maps Vita `sceCtrl` samples into the existing virtual-pad interface and explicitly clears the virtual pad on sampling errors to avoid stuck buttons. It is opt-in with `ICO_INPUT_VITA=ON`; the VitaSDK CI cross-compiles it and a host mock test checks mapping and failure handling. It currently uses a fixed physical-button mapping, not the desktop configurable bindings, and is not yet wired into a complete Vita main loop.
 - **Input:** `port/input/CMakeLists.txt` separates portable mapping, virtual-pad
   and recording logic from `input_sdl.c`, which is only included for the SDL
   window build. The portable mapping logic is a reuse candidate; a Vita

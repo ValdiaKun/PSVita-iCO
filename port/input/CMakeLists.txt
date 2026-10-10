@@ -22,6 +22,11 @@ target_include_directories(ico_input
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}"
     PRIVATE "${ICO_COMPAT_DIR}" "${CMAKE_SOURCE_DIR}/port/platform")
 target_compile_options(ico_input PRIVATE ${ICO_SEMANTIC_OPTIONS} ${ICO_PORT_WARNINGS})
+option(ICO_INPUT_VITA "Build the native PlayStation Vita controller adapter" OFF)
+if(ICO_INPUT_VITA)
+    target_sources(ico_input PRIVATE input_vita.c)
+    target_compile_definitions(ico_input PUBLIC ICO_INPUT_VITA=1)
+endif()
 # stick fix and mirror are port/game/options.c's
 target_link_libraries(ico_input PUBLIC ico_options)
 # input_record.c opens its file through host_fs (UTF-8 paths on Windows)
