@@ -548,7 +548,7 @@ jobs:
             -I "$root/port/platform" \
             "$root/port/platform/diag_vita.c" \
             "$root/port/platform/test/diag_vita_test.c" \
-            -o "$RUNNER_TEMP/diag_vita_test"
+            -lm -o "$RUNNER_TEMP/diag_vita_test"
           (cd "$RUNNER_TEMP" && ./diag_vita_test)
 
   softdouble-regression:

@@ -31,7 +31,6 @@ static int effects_program;
 static unsigned long long present_since_ns;
 static char log_path[LOG_PATH_MAX];
 static char failure[512];
-static void (*exit_hook)(const char *reason);
 static struct { const void *caller; const char *site; } float_fault_seen[FLOAT_FAULT_SITES];
 static unsigned int float_fault_sites;
 static struct { void *func; const char *name; } func_names[FUNC_NAMES];
@@ -122,7 +121,6 @@ void ico_diag_set_movie(int playing) { movie_playing = playing != 0; }
 void ico_diag_set_exit_hook(void (*fn)(const char *reason))
 {
     /* Vita crash dispatch is not installed, so do not imply this hook fires. */
-    exit_hook = NULL;
     if (fn != NULL) {
         ico_diag_log("fatal exit hook registered but not armed: Vita crash dispatch is outstanding");
     }
