@@ -1964,8 +1964,13 @@ int ico_host_saves_dir(char *out, size_t size)
     const char *v;
     int r = 0;
 
+#ifdef ICO_HOST_VITA
+    if (ini == NULL || ico_host_pref_dir(dir, sizeof(dir)) != 0 ||
+        ico_host_ini_path(ini_path, sizeof(ini_path)) != 0) {
+#else
     if (ini == NULL || ico_host_exe_dir(dir, sizeof(dir)) != 0 ||
         ico_path_join(ini_path, sizeof(ini_path), dir, "ico-pc.ini") != 0) {
+#endif
         free(ini);
         copy(out, size, "memcard");
         return -1;
