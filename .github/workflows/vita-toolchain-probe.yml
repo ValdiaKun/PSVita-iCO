@@ -201,6 +201,25 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
+      - name: Cross-compile CPU-side renderer references
+        shell: bash
+        run: |
+          set -euo pipefail
+          cc="$VITASDK/bin/arm-vita-eabi-gcc"
+          root="$GITHUB_WORKSPACE"
+          for source in vu1_ref.c vu1_normal.c vu1_scissor.c vu1_cluster.c vu1_mesh.c vu1_particle.c; do
+            object="$RUNNER_TEMP/ico_vu1_${source%.c}_vita.o"
+            "$cc" -std=gnu11 -Wall -Wextra -Werror -O2 \\
+              -fno-strict-aliasing -ffp-contract=off -fno-fast-math \\
+              -I "$root/port/math" \\
+              -I "$root/port/render/vu1_ref" \\
+              -c "$root/port/render/vu1_ref/$source" -o "$object"
+            header="$("$VITASDK/bin/arm-vita-eabi-readelf" -h "$object")"
+            grep -Eq 'Class:[[:space:]]+ELF32' <<< "$header"
+            grep -Eq 'Machine:[[:space:]]+ARM' <<< "$header"
+            printf 'Verified ARMv7 CPU renderer object: %s\n' "$object"
+          done
+
   softdouble-regression:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -255,24 +274,6 @@ jobs:
           cmake --build "$RUNNER_TEMP/ico-softdouble-project/build" --target softdouble_test --parallel 2
           ctest --test-dir "$RUNNER_TEMP/ico-softdouble-project/build" --output-on-failure -R softdouble
 
-      - name: Cross-compile CPU-side renderer references
-        shell: bash
-        run: |
-          set -euo pipefail
-          cc="$VITASDK/bin/arm-vita-eabi-gcc"
-          root="$GITHUB_WORKSPACE"
-          for source in vu1_ref.c vu1_normal.c vu1_scissor.c vu1_cluster.c vu1_mesh.c vu1_particle.c; do
-            object="$RUNNER_TEMP/ico_vu1_${source%.c}_vita.o"
-            "$cc" -std=gnu11 -Wall -Wextra -Werror -O2 \\
-              -fno-strict-aliasing -ffp-contract=off -fno-fast-math \\
-              -I "$root/port/math" \\
-              -I "$root/port/render/vu1_ref" \\
-              -c "$root/port/render/vu1_ref/$source" -o "$object"
-            header="$("$VITASDK/bin/arm-vita-eabi-readelf" -h "$object")"
-            grep -Eq 'Class:[[:space:]]+ELF32' <<< "$header"
-            grep -Eq 'Machine:[[:space:]]+ARM' <<< "$header"
-            printf 'Verified ARMv7 CPU renderer object: %s\n' "$object"
-          done
 
   game-source-audit:
     runs-on: ubuntu-24.04
