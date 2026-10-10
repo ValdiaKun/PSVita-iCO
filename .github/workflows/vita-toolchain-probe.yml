@@ -193,7 +193,7 @@ jobs:
           grep -Eq 'Machine:[[:space:]]+ARM' <<< "$header"
           printf 'Verified ARMv7 Vita controller object: %s\n' "$object"
 
-      - name: Configure and compile the CMake-selected Vita input object
+      - name: Configure and compile CMake-selected Vita input, audio and platform targets
         shell: bash
         run: |
           set -euo pipefail
@@ -219,6 +219,7 @@ jobs:
             -DICO_HEADLESS=ON \
             -DICO_LINK_EXE=OFF \
             -DICO_INPUT_VITA=ON \
+            -DICO_AUDIO_VITA=ON \
             -DICO_RHI_VULKAN=OFF \
             -DICO_RHI_D3D12=OFF \
             -DICO_SHADERS_DXIL=OFF
@@ -249,10 +250,34 @@ jobs:
           subprocess.run(shlex.split(command), cwd=entry["directory"], check=True)
           print("CMake-selected Vita input object compiled successfully", flush=True)
           PY
-          # Compile and archive the real platform target with the Vita-selected
-          # diagnostics backend. This catches source-selection/link-integration
-          # failures that a single-object compile cannot detect.
+          # Check the CMake-selected Vita sink and its call site: the macro
+          # must reach audio_host.c and out_vita.c must be in ico_sndn2.
+          python3 - "$build/compile_commands.json" "$root/port/audio/out_vita.c" "$root/port/audio/audio_host.c" <<'PY'
+          import json
+          import shlex
+          import subprocess
+          import sys
+          from pathlib import Path
+
+          database = Path(sys.argv[1])
+          entries = json.loads(database.read_text(encoding="utf-8"))
+          for source in sys.argv[2:]:
+              wanted = Path(source).resolve()
+              matches = [entry for entry in entries if Path(entry["file"]).resolve() == wanted]
+              if len(matches) != 1:
+                  raise SystemExit(f"expected one CMake compile entry for {wanted}, got {len(matches)}")
+              entry = matches[0]
+              command = entry.get("command")
+              if not command or "ICO_AUDIO_VITA=1" not in command:
+                  raise SystemExit(f"CMake did not apply ICO_AUDIO_VITA=1 to {wanted.name}")
+              print("Compile command:", command, flush=True)
+              subprocess.run(shlex.split(command), cwd=entry["directory"], check=True)
+              print(f"CMake-selected Vita audio compile passed: {wanted.name}", flush=True)
+          PY
+          # Build both static libraries to test CMake source selection and
+          # dependency integration, not just standalone object compilation.
           cmake --build "$build" --target ico_platform --parallel 2
+          cmake --build "$build" --target ico_sndn2 --parallel 2
 
       - name: Build and validate a minimal Vita VPK
         shell: bash
