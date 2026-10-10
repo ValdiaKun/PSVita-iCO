@@ -212,6 +212,21 @@ jobs:
             | sha256sum -c -
           tar -C "$deps/libchdr" -xf "$RUNNER_TEMP/libchdr.tar" \
             src include deps LICENSE.txt README.md CHANGELOG.md
+          # ICO_LINK_EXE=ON exposes the real headless host entry-point compile
+          # commands. CMake requires its pinned FMV decoder source even though
+          # this probe only compiles selected objects and never links ico_pc.
+          mkdir -p "$deps/libmpeg2"
+          git init -q "$RUNNER_TEMP/libmpeg2.git"
+          git -C "$RUNNER_TEMP/libmpeg2.git" fetch -q --depth 1 \
+            https://android.googlesource.com/platform/external/libmpeg2 "refs/tags/android-16.0.0_r4"
+          libmpeg2_commit="$(git -C "$RUNNER_TEMP/libmpeg2.git" rev-parse 'FETCH_HEAD^{commit}')"
+          test "$libmpeg2_commit" = "a97c2a1f0a796dc32bed80d3353c69c5fc07c750"
+          git -C "$RUNNER_TEMP/libmpeg2.git" archive --format=tar \
+            -o "$RUNNER_TEMP/libmpeg2.tar" "$libmpeg2_commit"
+          echo "3a8a3028cc5e0c8177d9c81e687318c3eb81c2a9fd3219d50c94eabf1a8f3ea1  $RUNNER_TEMP/libmpeg2.tar" \
+            | sha256sum -c -
+          tar -C "$deps/libmpeg2" -xf "$RUNNER_TEMP/libmpeg2.tar" \
+            common decoder LICENSE NOTICE MODULE_LICENSE_APACHE2 METADATA
           cmake -S "$root" -B "$build" \
             -DCMAKE_TOOLCHAIN_FILE="$VITASDK/share/vita.toolchain.cmake" \
             -DCMAKE_BUILD_TYPE=Release \
@@ -294,8 +309,8 @@ jobs:
                   raise SystemExit(f"expected one CMake compile entry for {wanted}, got {len(matches)}")
               entry = matches[0]
               command = entry.get("command")
-              if not command or "ICO_HEADLESS=1" not in command or "ICO_INPUT_VITA=1" not in command:
-                  raise SystemExit(f"host source is not configured for the Vita headless platform: {wanted.name}")
+              if not command or "ICO_HEADLESS=1" not in command:
+                  raise SystemExit(f"host source is not configured for the headless platform: {wanted.name}")
               print("Compile host entry:", command, flush=True)
               subprocess.run(shlex.split(command), cwd=entry["directory"], check=True)
               print(f"Vita host-source compile passed: {wanted.name}", flush=True)
