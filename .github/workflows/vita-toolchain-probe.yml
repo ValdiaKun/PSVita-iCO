@@ -8,12 +8,24 @@ on:
       - "docs/PSVITA_PORTING.md"
       - "port/math/**"
       - "port/audio/**"
+      - "tools/vita_source_audit.py"
+      - "cmake/IcoSources.cmake"
+      - "cmake/IcoFlags.cmake"
+      - "cmake/IcoExclusions.cmake"
+      - "config/link_order.pal.txt"
+      - "ico2/**"
   pull_request:
     paths:
       - ".github/workflows/vita-toolchain-probe.yml"
       - "docs/PSVITA_PORTING.md"
       - "port/math/**"
       - "port/audio/**"
+      - "tools/vita_source_audit.py"
+      - "cmake/IcoSources.cmake"
+      - "cmake/IcoFlags.cmake"
+      - "cmake/IcoExclusions.cmake"
+      - "config/link_order.pal.txt"
+      - "ico2/**"
   workflow_dispatch:
 
 concurrency:
