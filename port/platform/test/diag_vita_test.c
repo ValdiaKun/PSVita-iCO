@@ -11,6 +11,8 @@ static unsigned int ticks(void) { return 42; }
 static unsigned int vsyncs(void) { return 99; }
 static void status(char *out, size_t size) { snprintf(out, size, "mock-status"); }
 static void exit_hook(const char *reason) { (void)reason; }
+static void fatal_box(const char *text) { (void)text; }
+static void fatal_flush(void) {}
 
 static int check(int condition, const char *message)
 {
@@ -48,6 +50,7 @@ int main(void)
     ico_diag_name_func((void *)&fake_time_us, "test-worker");
     ico_host_thread_func(1, (void *)&fake_time_us, 3);
     ico_diag_set_exit_hook(exit_hook);
+    ico_diag_set_fatal_ui(fatal_box, fatal_flush);
     ico_diag_set_effects_program(1);
     ico_diag_present_enter();
     fake_time_us += 150000ull;
@@ -73,6 +76,8 @@ int main(void)
     failures += check(strstr(log, "function=test-worker") != NULL, "registered game-thread names must be logged");
     failures += check(strstr(log, "fatal exit hook registered but not armed") != NULL,
                       "unsupported fatal dispatch must be disclosed");
+    failures += check(strstr(log, "fatal UI callbacks ignored") != NULL,
+                      "unsupported fatal UI callbacks must be disclosed");
     failures += check(strstr(log, "slow present: 150.0 ms effects_program=1") != NULL,
                       "long presents must be measured and logged");
     remove(path);

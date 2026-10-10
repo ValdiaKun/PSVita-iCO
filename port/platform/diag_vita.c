@@ -132,8 +132,9 @@ void ico_diag_set_exit_hook(void (*fn)(const char *reason))
 
 void ico_diag_set_fatal_ui(void (*box)(const char *text), void (*flush)(void))
 {
-    (void)box;
-    (void)flush;
+    if (box != NULL || flush != NULL) {
+        ico_diag_log("fatal UI callbacks ignored: Vita fatal dispatch and message-box integration are outstanding");
+    }
 }
 
 int ico_diag_process_memory(long *rss_kb, long *peak_kb)
