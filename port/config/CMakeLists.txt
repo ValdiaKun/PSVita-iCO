@@ -25,6 +25,21 @@ if(TARGET ico_pc)
     target_link_libraries(ico_pc PRIVATE ico_config)
 endif()
 
+# Test the Vita-specific storage policy with a disposable host directory. Keep
+# this target beside ico_config so the standalone test links the same TOML and
+# platform services as the real application.
+add_executable(host_config_vita_test ../platform/test/host_config_vita_test.c
+                                    ../platform/host_config.c)
+target_compile_definitions(host_config_vita_test PRIVATE
+    ICO_HOST_VITA=1 ICO_HOST_VITA_DATA_DIR=\"host_config_vita_test_dir\")
+target_include_directories(host_config_vita_test PRIVATE "${ICO_COMPAT_DIR}"
+                           "${CMAKE_SOURCE_DIR}/port/platform")
+target_compile_options(host_config_vita_test PRIVATE ${ICO_SEMANTIC_OPTIONS} ${ICO_PORT_WARNINGS})
+target_link_libraries(host_config_vita_test PRIVATE ico_config ico_platform)
+if(ICO_RUN_TESTS)
+    add_test(NAME host_config_vita COMMAND host_config_vita_test)
+endif()
+
 # parse, write, round trip, precedence, the language, the clocks and timers
 add_executable(config_test test/config_test.c ../platform/host_config.c)
 target_include_directories(config_test PRIVATE "${ICO_COMPAT_DIR}" "${CMAKE_SOURCE_DIR}/port/platform")

@@ -660,6 +660,91 @@ jobs:
             -o "$RUNNER_TEMP/vita_input_test"
           "$RUNNER_TEMP/vita_input_test"
 
+      - name: Build and run Vita host-config path regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          build="$RUNNER_TEMP/ico-vita-host-config"
+          cmake -S "$GITHUB_WORKSPACE" -B "$build" \
+            -DICO_HEADLESS=ON \
+            -DICO_LINK_EXE=OFF \
+            -DICO_INPUT_VITA=OFF \
+            -DICO_AUDIO_VITA=OFF \
+            -DICO_RHI_VULKAN=OFF \
+            -DICO_RHI_D3D12=OFF
+          cmake --build "$build" --target host_config_vita_test --parallel 2
+          ctest --test-dir "$build" --output-on-failure -R '^host_config_vita          mkdir -p "$project"
+          cat > "$project/CMakeLists.txt" <<'EOF'
+          cmake_minimum_required(VERSION 3.25)
+          project(ico_softdouble_regression C)
+          enable_testing()
+          set(ICO_ROOT "" CACHE PATH "ICO repository root")
+          set(dpbit "${CMAKE_CURRENT_BINARY_DIR}/dpbit")
+          add_custom_command(
+            OUTPUT "${dpbit}/dp-bit.c" "${dpbit}/fp-bit.c" "${dpbit}/libgcc2.h"
+            COMMAND "${CMAKE_COMMAND}" "-DSRC=${ICO_ROOT}/sce/libgcc" "-DDST=${dpbit}"
+                    -P "${ICO_ROOT}/port/math/test/dpbit_harness.cmake"
+            DEPENDS "${ICO_ROOT}/sce/libgcc/dp-bit.c" "${ICO_ROOT}/sce/libgcc/fp-bit.c"
+                    "${ICO_ROOT}/sce/libgcc/libgcc2.h"
+                    "${ICO_ROOT}/port/math/test/dpbit_harness.cmake"
+            VERBATIM)
+          add_library(ico_dpbit_ref STATIC "${dpbit}/dp-bit.c" "${dpbit}/fp-bit.c")
+          target_compile_definitions(ico_dpbit_ref PRIVATE
+            dpadd=ref_dpadd dpsub=ref_dpsub dpmul=ref_dpmul dpdiv=ref_dpdiv dpcmp=ref_dpcmp
+            litodp=ref_litodp dptoli=ref_dptoli dptoul=ref_dptoul __negdf2=ref___negdf2
+            __make_dp=ref___make_dp dptofp=ref_dptofp __pack_d=ref___pack_d
+            __unpack_d=ref___unpack_d _fpadd_parts=ref__fpadd_parts
+            __fpcmp_parts_d=ref___fpcmp_parts_d fpadd=ref_fpadd fpsub=ref_fpsub
+            fpmul=ref_fpmul fpdiv=ref_fpdiv fpcmp=ref_fpcmp sitofp=ref_sitofp
+            fptosi=ref_fptosi fptoui=ref_fptoui __negsf2=ref___negsf2
+            __make_fp=ref___make_fp fptodp=ref_fptodp __pack_f=ref___pack_f
+            __unpack_f=ref___unpack_f __fpcmp_parts_f=ref___fpcmp_parts_f)
+          target_compile_options(ico_dpbit_ref PRIVATE -w -fno-builtin -fno-strict-aliasing)
+          add_executable(softdouble_test
+            "${ICO_ROOT}/port/math/softdouble.c"
+            "${ICO_ROOT}/port/math/test/softdouble_test.c")
+          target_include_directories(softdouble_test PRIVATE "${ICO_ROOT}/port/math")
+          target_compile_options(softdouble_test PRIVATE -std=gnu11 -fno-strict-aliasing
+            -fwrapv -ffp-contract=off -fno-fast-math -fsigned-char -fno-common -fgnu89-inline)
+          target_link_libraries(softdouble_test PRIVATE ico_dpbit_ref m)
+          add_test(NAME softdouble COMMAND softdouble_test)
+          EOF
+          cmake -S "$project" -B "$project/build" -G Ninja -DICO_ROOT="$GITHUB_WORKSPACE"
+
+      - name: Build and run bit-exact softdouble regression
+        run: |
+          cmake --build "$RUNNER_TEMP/ico-softdouble-project/build" --target softdouble_test --parallel 2
+          ctest --test-dir "$RUNNER_TEMP/ico-softdouble-project/build" --output-on-failure -R softdouble
+
+
+  game-source-audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    container:
+      image: vitasdk/vitasdk:2026.08
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cross-compile every host game translation unit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/vita_source_audit.py \
+            --root "$GITHUB_WORKSPACE" \
+            --cc "$VITASDK/bin/arm-vita-eabi-gcc" \
+            --output-dir "$RUNNER_TEMP/vita-game-objects" \
+            --report "$RUNNER_TEMP/vita-source-audit.json"
+
+      - name: Upload source-audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vita-game-source-audit
+          path: ${{ runner.temp }}/vita-source-audit.json
+          retention-days: 7
+          if-no-files-found: warn
+
+
       - name: Configure isolated host regression test
         shell: bash
         run: |
