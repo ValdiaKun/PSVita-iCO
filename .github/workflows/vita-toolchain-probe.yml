@@ -5,6 +5,7 @@ on:
     branches: [vita/feasibility-audit]
     paths:
       - ".github/workflows/vita-toolchain-probe.yml"
+      - "CMakeLists.txt"
       - "docs/PSVITA_PORTING.md"
       - "port/**"
       - "tools/vita_source_audit.py"
@@ -247,6 +248,10 @@ jobs:
           subprocess.run(shlex.split(command), cwd=entry["directory"], check=True)
           print("CMake-selected Vita input object compiled successfully", flush=True)
           PY
+          # Compile and archive the real platform target with the Vita-selected
+          # diagnostics backend. This catches source-selection/link-integration
+          # failures that a single-object compile cannot detect.
+          cmake --build "$build" --target ico_platform --parallel 2
 
       - name: Build and validate a minimal Vita VPK
         shell: bash
