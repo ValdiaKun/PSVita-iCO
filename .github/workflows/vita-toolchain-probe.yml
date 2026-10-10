@@ -217,7 +217,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DICO_DEPS_DIR="$deps" \
             -DICO_HEADLESS=ON \
-            -DICO_LINK_EXE=OFF \
+            -DICO_LINK_EXE=ON \
             -DICO_INPUT_VITA=ON \
             -DICO_AUDIO_VITA=ON \
             -DICO_RHI_VULKAN=OFF \
@@ -273,6 +273,32 @@ jobs:
               print("Compile command:", command, flush=True)
               subprocess.run(shlex.split(command), cwd=entry["directory"], check=True)
               print(f"CMake-selected Vita audio compile passed: {wanted.name}", flush=True)
+          PY
+          # Generate the executable's build metadata and compile its headless
+          # host entry-point/platform sources. This is deliberately compile-only:
+          # a full ICO link is still blocked by unresolved game symbols.
+          cmake --build "$build" --target ico_build_commit --parallel 2
+          python3 - "$build/compile_commands.json" "$root/port/platform/main_host.c" "$root/port/platform/trace_host.c" "$root/port/platform/host_config.c" "$root/port/platform/host_loop.c" "$root/port/platform/host_fs.c" <<'PY'
+          import json
+          import shlex
+          import subprocess
+          import sys
+          from pathlib import Path
+
+          database = Path(sys.argv[1])
+          entries = json.loads(database.read_text(encoding="utf-8"))
+          for source in sys.argv[2:]:
+              wanted = Path(source).resolve()
+              matches = [entry for entry in entries if Path(entry["file"]).resolve() == wanted]
+              if len(matches) != 1:
+                  raise SystemExit(f"expected one CMake compile entry for {wanted}, got {len(matches)}")
+              entry = matches[0]
+              command = entry.get("command")
+              if not command or "ICO_HEADLESS=1" not in command or "ICO_INPUT_VITA=1" not in command:
+                  raise SystemExit(f"host source is not configured for the Vita headless platform: {wanted.name}")
+              print("Compile host entry:", command, flush=True)
+              subprocess.run(shlex.split(command), cwd=entry["directory"], check=True)
+              print(f"Vita host-source compile passed: {wanted.name}", flush=True)
           PY
           # Build both static libraries to test CMake source selection and
           # dependency integration, not just standalone object compilation.
