@@ -49,6 +49,22 @@ jobs:
           file "$RUNNER_TEMP/vita_probe.o"
           "$VITASDK/bin/arm-vita-eabi-readelf" -h "$RUNNER_TEMP/vita_probe.o"
 
+      - name: Cross-compile portable production modules
+        shell: bash
+        run: |
+          set -euo pipefail
+          cc="$VITASDK/bin/arm-vita-eabi-gcc"
+          "$cc" -std=gnu11 -Wall -Wextra -Werror -O2 \
+            -I "$GITHUB_WORKSPACE/port/math" \
+            -c "$GITHUB_WORKSPACE/port/math/ps2float.c" \
+            -o "$RUNNER_TEMP/ico_ps2float_vita.o"
+          "$cc" -std=gnu11 -Wall -Wextra -Werror -O2 \
+            -I "$GITHUB_WORKSPACE/port/audio" \
+            -c "$GITHUB_WORKSPACE/port/audio/adpcm.c" \
+            -o "$RUNNER_TEMP/ico_adpcm_vita.o"
+          "$VITASDK/bin/arm-vita-eabi-readelf" -h "$RUNNER_TEMP/ico_ps2float_vita.o"
+          "$VITASDK/bin/arm-vita-eabi-readelf" -h "$RUNNER_TEMP/ico_adpcm_vita.o"
+
       - name: Build and validate a minimal Vita VPK
         shell: bash
         run: |
