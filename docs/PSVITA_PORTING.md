@@ -56,15 +56,27 @@ Vita game build:
   (`cloth.c`, `libvu0.c`, `matrix.c`, `matrix_drive.c`, `matrix_stack.c`,
   `quaternion.c`, `softdouble.c`); and nine portable input units (`bindings.c`,
   `input_record.c`, `mouse_camera.c`, `mouse_look.c`, `pad_host.c`,
-  `pad_script.c`, `pointer.c`, `touch.c`, `vpad.c`) with strict warnings. Every
-  object was verified as ELF32/ARM. This is still a selected translation-unit
-  audit, not a complete game compile or link.
+  `pad_script.c`, `pointer.c`, `touch.c`, `vpad.c`) with strict warnings.
+  Every object was verified as ELF32/ARM.
+- **Full game translation-unit audit (CI run 38021283325):** the VitaSDK compiler
+  successfully compiled all 214 host game C translation units selected from
+  `config/link_order.pal.txt`, with the source inventory cross-checked against
+  generated CMake lists and the host semantic flags/include order mirrored by
+  `tools/vita_source_audit.py`. The run also passed the isolated softdouble
+  regression and SDK smoke-package job. This is a compile-only audit: it does
+  not link the game or compile/verify the host platform, RHI, shader, and
+  window-specific dependency chain.
 - **ARMv7 compatibility fix verified:** the expanded audit exposed that ARMv7
   GCC 15.2 rejects `unsigned __int128` in `softdouble.c`. Multiplication now
   uses explicit 32-bit limbs to form the 128-bit product, and division uses
   restoring quotient generation with a bounded 64-bit remainder. The host
-  bit-exact softdouble oracle test passed (CI run 38018639427), and the updated
-  `softdouble.c` compiled for ARMv7 with `-Wall -Wextra -Werror`.
+  bit-exact softdouble oracle regression passes, and the updated `softdouble.c`
+  compiles for ARMv7 with `-Wall -Wextra -Werror`.
+- **Bounded game-layout fix verified (CI run 38021283325):** the source audit
+  exposed a target-specific layout assertion in `ico2/fumi/src/boyact.c`.
+  The current change permits the bounded `BoyInfo` layout on Vita, and the
+  subsequent all-source compile job passed. This validates compilation only,
+  not runtime memory safety or the correctness of the game behavior on Vita.
 
 ## Feasibility risks to measure early
 
@@ -93,22 +105,20 @@ Vita game build:
 
 - Install the pinned VitaSDK container in CI and verify the required compiler,
   linker and packaging tools are present.
-- Compile a tiny ARMv7 object and two existing portable production modules
-  (`port/math/ps2float.c` and `port/audio/adpcm.c`) with warnings treated as errors.
-  Use VitaSDK's documented CMake helpers to create a minimal SELF/VPK, check the
-  archive structure, and retain the smoke-test package as a short-lived CI artifact.
+- Compile a tiny ARMv7 object and existing portable production modules with
+  warnings treated as errors. Use VitaSDK's documented CMake helpers to create
+  a minimal SELF/VPK, check the archive structure, and retain the smoke-test
+  package as a short-lived CI artifact.
 - This smoke-test VPK contains only a `main` that returns immediately; it does
   not compile ICO sources or demonstrate graphics, input, audio or game startup.
-  Only after the probe passes should an experimental repository toolchain and
-  explicit Vita source allowlist be introduced.
 
 ### Gate 2 — Game-code compile audit
 
-- Create an explicit Vita source/dependency allowlist rather than compiling all
-  desktop platform sources.
-- Cross-compile the platform-independent game code and resolve errors one class
-  at a time.
-- Preserve the source-order and generated-file checks.
+- The compile-only audit currently covers all 214 game C translation units and
+  checks its source list against the canonical link-order inventory.
+- Preserve source-order, generated-file, include-order and semantic-flag checks.
+- Next extend the audit to the platform-independent port libraries and classify
+  any unsupported target APIs separately from the game sources.
 - Do not stub required game behavior merely to make a build green.
 
 ### Gate 3 — Platform services
@@ -138,4 +148,8 @@ the host, and small on-device smoke tests for Vita-specific calls.
 
 ## Immediate next action
 
-Next, add a reproducible source-only cross-compile audit for the 214 game translation units in `config/link_order.pal.txt`, preserving each programmer directory's include order and the host build's semantic flags. Use its first actionable compiler failures to establish the explicit Vita source allowlist, then design platform-service and renderer integration. Do not treat the smoke-test VPK as an ICO game build.
+Extend the VitaSDK compile audit to the platform-independent port libraries and
+their dependency seams. In parallel, define the smallest viable Vita platform
+entry/lifecycle and GPU probe; keep the host Vulkan/SDL renderer out of the Vita
+target until its API and shader requirements are addressed. The existing smoke
+VPK is not an ICO game build.
