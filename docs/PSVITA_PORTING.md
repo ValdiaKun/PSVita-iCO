@@ -50,10 +50,15 @@ hardware or a suitable emulator.
 
 ### Gate 1 — Cross-compile probe
 
-- Install a pinned VitaSDK toolchain in CI using a maintained, documented setup.
-- Compile a tiny VitaSDK C program and package a minimal VPK.
-- Only after that passes, add an experimental CMake toolchain/preset for this
-  repository. A toolchain probe is not evidence the game can build.
+- Install the pinned VitaSDK container in CI and verify the required compiler,
+  linker and packaging tools are present.
+- Compile a tiny ARMv7 object, then use VitaSDK's documented CMake helpers to
+  create a minimal SELF/VPK. Check the archive structure and retain the smoke-test
+  package as a short-lived CI artifact.
+- This smoke-test VPK contains only a `main` that returns immediately; it does
+  not compile ICO sources or demonstrate graphics, input, audio or game startup.
+  Only after the probe passes should an experimental repository toolchain and
+  explicit Vita source allowlist be introduced.
 
 ### Gate 2 — Game-code compile audit
 
@@ -91,7 +96,8 @@ the host, and small on-device smoke tests for Vita-specific calls.
 
 ## Immediate next action
 
-Add a VitaSDK-only CI probe first. Verify the selected setup action/toolchain is
-maintained and that its runner actually exposes `arm-vita-eabi-gcc`,
-`vita-libs` and `vita-mksfoex` before introducing a repository-wide Vita
-build. The original desktop/Android workflows must remain unaffected.
+Finish the VitaSDK-only CI probe: verify compiler tools, compile an ARMv7 object,
+create and structurally inspect a minimal SELF/VPK, and retain the package as a
+CI artifact. Then add a Vita-specific CMake toolchain/preset without changing the
+desktop/Android workflows, and start a measured compile audit of portable game
+sources. The probe's green status must not be presented as an ICO game build.
