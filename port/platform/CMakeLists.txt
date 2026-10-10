@@ -1,9 +1,19 @@
 # port/platform/CMakeLists.txt: the platform sources ico_platform takes
 # beyond the top-level CMakeLists.txt's, and the platform tests.
 
+if(ICO_INPUT_VITA)
+    # The desktop diagnostics backend depends on POSIX signals, pthreads,
+    # ucontext and /proc. Use the explicitly limited Vita logger instead.
+    target_sources(ico_platform PRIVATE diag_vita.c)
+else()
+    target_sources(ico_platform PRIVATE diag_host.c)
+    # diag_host.c's heartbeat and watchdog thread (pthreads on POSIX).
+    find_package(Threads REQUIRED)
+    target_link_libraries(ico_platform PUBLIC Threads::Threads)
+endif()
+
 target_sources(ico_platform PRIVATE
     arena.c
-    diag_host.c
     fiber.c
     hotkeys.c
     kernel_host.c
@@ -11,9 +21,6 @@ target_sources(ico_platform PRIVATE
     sched.c
     vsync_hooks.c
     window_lifecycle.c)
-# diag_host.c's heartbeat and watchdog thread (pthreads on POSIX).
-find_package(Threads REQUIRED)
-target_link_libraries(ico_platform PUBLIC Threads::Threads)
 if(TARGET ico_pc)
     # A link map beside the program, shipped with test builds, to turn the
     # crash report's executable offsets into symbols.
