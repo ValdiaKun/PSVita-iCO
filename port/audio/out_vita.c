@@ -36,7 +36,7 @@ int ico_audio_vita_open(void)
         return 0;
     }
     pending_frames = 0;
-    port = sceAudioOutOpenPort(SCE_AUDIO_OUT_PORT_TYPE_MAIN, ICO_VITA_AUDIO_FRAMES, SCE_AUDIO_OUT_SAMPLE_RATE_48000,
+    port = sceAudioOutOpenPort(SCE_AUDIO_OUT_PORT_TYPE_MAIN, ICO_VITA_AUDIO_FRAMES, 48000,
                                SCE_AUDIO_OUT_MODE_STEREO);
     if (port < 0) {
         fprintf(stderr, "audio: sceAudioOutOpenPort failed: 0x%08X\n", (unsigned int)port);
