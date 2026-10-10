@@ -72,8 +72,8 @@ int ico_input_vita_update(void)
     MAP_BUTTON(SCE_CTRL_RIGHT, ICO_PAD_RIGHT);
     MAP_BUTTON(SCE_CTRL_DOWN, ICO_PAD_DOWN);
     MAP_BUTTON(SCE_CTRL_LEFT, ICO_PAD_LEFT);
-    MAP_BUTTON(SCE_CTRL_LSTICK, ICO_PAD_L3);
-    MAP_BUTTON(SCE_CTRL_RSTICK, ICO_PAD_R3);
+    MAP_BUTTON(SCE_CTRL_L3, ICO_PAD_L3);
+    MAP_BUTTON(SCE_CTRL_R3, ICO_PAD_R3);
 #undef MAP_BUTTON
     pad.menu_buttons = pad.buttons;
     pad.lx = axis_value(sample.lx);
