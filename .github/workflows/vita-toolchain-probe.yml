@@ -382,6 +382,33 @@ jobs:
           fi
           echo "Confirmed: diag_host.c still has desktop-only dependencies; this is an explicit porting blocker, not a passing Vita implementation."
 
+  vita-arena-mock-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compile Vita arena branch against mocked sysmem API
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$GITHUB_WORKSPACE"
+          cc -std=gnu11 -Wall -Wextra -Werror -O2 -D__vita__ \
+            -I "$root/port/platform/test/mock" \
+            -I "$root/port/platform" \
+            "$root/port/platform/arena.c" \
+            "$root/port/platform/test/arena_vita_test.c" \
+            -o "$RUNNER_TEMP/arena_vita_test"
+
+      - name: Verify allocation, alignment, zero-fill, and retry behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+          test_bin="$RUNNER_TEMP/arena_vita_test"
+          "$test_bin" success
+          "$test_bin" alloc-fail
+          "$test_bin" base-fail
+
   softdouble-regression:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
