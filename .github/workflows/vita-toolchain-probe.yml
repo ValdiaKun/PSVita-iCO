@@ -192,16 +192,50 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Configure host regression test
+      - name: Configure isolated host regression test
+        shell: bash
         run: |
-          cmake -S . -B "$RUNNER_TEMP/ico-softdouble-host" -G Ninja \
-            -DICO_HEADLESS=ON \
-            -DICO_RHI_VULKAN=OFF \
-            -DICO_RHI_D3D12=OFF \
-            -DICO_LINK_EXE=OFF \
-            -DICO_RUN_TESTS=ON
+          set -euo pipefail
+          project="$RUNNER_TEMP/ico-softdouble-project"
+          mkdir -p "$project"
+          cat > "$project/CMakeLists.txt" <<'EOF'
+          cmake_minimum_required(VERSION 3.25)
+          project(ico_softdouble_regression C)
+          enable_testing()
+          set(ICO_ROOT "" CACHE PATH "ICO repository root")
+          set(dpbit "${CMAKE_CURRENT_BINARY_DIR}/dpbit")
+          add_custom_command(
+            OUTPUT "${dpbit}/dp-bit.c" "${dpbit}/fp-bit.c" "${dpbit}/libgcc2.h"
+            COMMAND "${CMAKE_COMMAND}" "-DSRC=${ICO_ROOT}/sce/libgcc" "-DDST=${dpbit}"
+                    -P "${ICO_ROOT}/port/math/test/dpbit_harness.cmake"
+            DEPENDS "${ICO_ROOT}/sce/libgcc/dp-bit.c" "${ICO_ROOT}/sce/libgcc/fp-bit.c"
+                    "${ICO_ROOT}/sce/libgcc/libgcc2.h"
+                    "${ICO_ROOT}/port/math/test/dpbit_harness.cmake"
+            VERBATIM)
+          add_library(ico_dpbit_ref STATIC "${dpbit}/dp-bit.c" "${dpbit}/fp-bit.c")
+          target_compile_definitions(ico_dpbit_ref PRIVATE
+            dpadd=ref_dpadd dpsub=ref_dpsub dpmul=ref_dpmul dpdiv=ref_dpdiv dpcmp=ref_dpcmp
+            litodp=ref_litodp dptoli=ref_dptoli dptoul=ref_dptoul __negdf2=ref___negdf2
+            __make_dp=ref___make_dp dptofp=ref_dptofp __pack_d=ref___pack_d
+            __unpack_d=ref___unpack_d _fpadd_parts=ref__fpadd_parts
+            __fpcmp_parts_d=ref___fpcmp_parts_d fpadd=ref_fpadd fpsub=ref_fpsub
+            fpmul=ref_fpmul fpdiv=ref_fpdiv fpcmp=ref_fpcmp sitofp=ref_sitofp
+            fptosi=ref_fptosi fptoui=ref_fptoui __negsf2=ref___negsf2
+            __make_fp=ref___make_fp fptodp=ref_fptodp __pack_f=ref___pack_f
+            __unpack_f=ref___unpack_f __fpcmp_parts_f=ref___fpcmp_parts_f)
+          target_compile_options(ico_dpbit_ref PRIVATE -w -fno-builtin -fno-strict-aliasing)
+          add_executable(softdouble_test
+            "${ICO_ROOT}/port/math/softdouble.c"
+            "${ICO_ROOT}/port/math/test/softdouble_test.c")
+          target_include_directories(softdouble_test PRIVATE "${ICO_ROOT}/port/math")
+          target_compile_options(softdouble_test PRIVATE -std=gnu11 -fno-strict-aliasing
+            -fwrapv -ffp-contract=off -fno-fast-math -fsigned-char -fno-common -fgnu89-inline)
+          target_link_libraries(softdouble_test PRIVATE ico_dpbit_ref m)
+          add_test(NAME softdouble COMMAND softdouble_test)
+          EOF
+          cmake -S "$project" -B "$project/build" -G Ninja -DICO_ROOT="$GITHUB_WORKSPACE"
 
       - name: Build and run bit-exact softdouble regression
         run: |
-          cmake --build "$RUNNER_TEMP/ico-softdouble-host" --target softdouble_test --parallel 2
-          ctest --test-dir "$RUNNER_TEMP/ico-softdouble-host" --output-on-failure -R '^softdouble$'
+          cmake --build "$RUNNER_TEMP/ico-softdouble-project/build" --target softdouble_test --parallel 2
+          ctest --test-dir "$RUNNER_TEMP/ico-softdouble-project/build" --output-on-failure -R '^softdouble
