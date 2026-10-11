@@ -193,6 +193,21 @@ jobs:
           grep -Eq 'Machine:[[:space:]]+ARM' <<< "$header"
           printf 'Verified ARMv7 Vita controller object: %s\n' "$object"
 
+      - name: Reject unsupported windowed Vita configuration explicitly
+        shell: bash
+        run: |
+          set -euo pipefail
+          build="$RUNNER_TEMP/ico-vita-windowed-guard"
+          log="$RUNNER_TEMP/ico-vita-windowed-guard.log"
+          if cmake -S "$GITHUB_WORKSPACE" -B "$build" \
+            -DCMAKE_TOOLCHAIN_FILE="$VITASDK/share/vita.toolchain.cmake" \
+            -DICO_HEADLESS=OFF -DICO_INPUT_VITA=ON >"$log" 2>&1; then
+            echo "Unsupported windowed Vita configuration unexpectedly succeeded" >&2
+            exit 1
+          fi
+          cat "$log"
+          grep -F "Native Vita windowing/rendering is not implemented" "$log"
+
       - name: Configure and compile CMake-selected Vita input, audio and platform targets
         shell: bash
         run: |
