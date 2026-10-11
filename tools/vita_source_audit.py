@@ -27,6 +27,9 @@ SEMANTIC_FLAGS = (
     "-fno-common",
     "-fgnu89-inline",
 )
+LAYOUT_FLAGS = ("-fno-short-enums",)
+
+
 WARNING_FLAGS = (
     "-Wreturn-type",
     "-Wimplicit-function-declaration",
@@ -113,7 +116,7 @@ def main() -> int:
         if re.search(r"^\s+-W" + re.escape(warning_name) + r"\s", known_warning_text, re.MULTILINE):
             optional_flags.append(flag)
     common_flags = [
-        *SEMANTIC_FLAGS, *WARNING_FLAGS[:3], *optional_flags,
+        *SEMANTIC_FLAGS, *LAYOUT_FLAGS, *WARNING_FLAGS[:3], *optional_flags,
         "-DICO_HOST=1", "-DICO_HEADLESS=1",
     ]
 
@@ -184,6 +187,7 @@ def main() -> int:
         "passed": sum(item["ok"] for item in results),
         "failed": sum(not item["ok"] for item in results),
         "semantic_flags": list(SEMANTIC_FLAGS),
+        "layout_flags": list(LAYOUT_FLAGS),
         "warning_flags": [*WARNING_FLAGS[:3], *optional_flags],
         "results": results,
         "scope": "C translation-unit compile audit only; no game link or runtime validation",

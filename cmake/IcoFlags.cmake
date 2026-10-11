@@ -35,6 +35,9 @@ set(ICO_SEMANTIC_OPTIONS
 #   -mno-ms-bitfields  Windows: bit-fields by the GCC rules the EE used, not
 #                      the MS rules mingw targets default to.
 set(ICO_GAME_LAYOUT_OPTIONS "")
+# The original EE compiler used 32-bit enum storage. Some target toolchains
+# may enable short enums by default; keep game/data record layouts explicit.
+list(APPEND ICO_GAME_LAYOUT_OPTIONS -fno-short-enums)
 if(WIN32)
     list(APPEND ICO_GAME_LAYOUT_OPTIONS -mno-ms-bitfields)
 endif()
