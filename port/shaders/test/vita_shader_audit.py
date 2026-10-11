@@ -20,6 +20,7 @@ EXPECTED_FEATURES = {
     "integer_texture": ("blend_int.hlsl", "Texture2D<uint4>"),
     "integer_load": ("blend_int.hlsl", ".Load("),
     "precise_math": ("vu_skin.hlsl", "precise"),
+    "dual_source_output": ("common.hlsli", "SV_Target1"),
 }
 FEATURE_PATTERNS = {
     "vertex_id": r"\bSV_VertexID\b",
@@ -44,7 +45,7 @@ def main() -> int:
     parser.add_argument("--json-out", type=Path, help="write the feature inventory as JSON")
     args = parser.parse_args()
 
-    shaders = sorted(SHADER_DIR.glob("*.hlsl"))
+    shaders = sorted([*SHADER_DIR.glob("*.hlsl"), *SHADER_DIR.glob("*.hlsli")])
     if not shaders:
         raise SystemExit(f"no HLSL files found under {SHADER_DIR}")
 
