@@ -22,10 +22,9 @@ static FILE *s_log;
 
 static void probe_log(const char *message)
 {
-    if (s_log != NULL) {
-        fprintf(s_log, "%s\n", message);
-        fflush(s_log);
-    }
+    FILE *out = s_log != NULL ? s_log : stderr;
+    fprintf(out, "%s\n", message);
+    fflush(out);
 }
 
 static void probe_shader_log(const char *label, GLuint object, int is_program)
@@ -38,10 +37,9 @@ static void probe_shader_log(const char *label, GLuint object, int is_program)
         glGetShaderInfoLog(object, (GLsizei)sizeof(info), &length, info);
     }
     if (length > 0) {
-        if (s_log != NULL) {
-            fprintf(s_log, "%s: %s\n", label, info);
-            fflush(s_log);
-        }
+        FILE *out = s_log != NULL ? s_log : stderr;
+        fprintf(out, "%s: %s\n", label, info);
+        fflush(out);
     } else {
         probe_log(label);
     }
@@ -50,9 +48,10 @@ static void probe_shader_log(const char *label, GLuint object, int is_program)
 static void probe_log_gl_error(const char *stage)
 {
     GLenum error = glGetError();
-    if (error != GL_NO_ERROR && s_log != NULL) {
-        fprintf(s_log, "%s: GL error 0x%04x\n", stage, (unsigned int)error);
-        fflush(s_log);
+    if (error != GL_NO_ERROR) {
+        FILE *out = s_log != NULL ? s_log : stderr;
+        fprintf(out, "%s: GL error 0x%04x\n", stage, (unsigned int)error);
+        fflush(out);
     }
 }
 
@@ -282,9 +281,10 @@ int main(void)
     {
         GLenum texture_error = glGetError();
         if (texture_error != GL_NO_ERROR) {
-            if (s_log != NULL) {
-                fprintf(s_log, "texture upload failed: GL error 0x%04x\n", (unsigned int)texture_error);
-                fflush(s_log);
+            {
+                FILE *out = s_log != NULL ? s_log : stderr;
+                fprintf(out, "texture upload failed: GL error 0x%04x\n", (unsigned int)texture_error);
+                fflush(out);
             }
             glDeleteTextures(1, &texture);
             if (program != 0) {
