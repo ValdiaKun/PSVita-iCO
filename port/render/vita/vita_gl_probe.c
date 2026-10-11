@@ -17,6 +17,11 @@ typedef struct ProbeVertex {
     float color[4];
 } ProbeVertex;
 
+typedef struct BlendTestVertex {
+    float position[2];
+    float texcoord[2];
+} BlendTestVertex;
+
 static unsigned char s_checker[4 * 4 * 4];
 static FILE *s_log;
 
@@ -71,6 +76,34 @@ static const char s_fragment_shader[] =
     "{\n"
     "    return vColor;\n"
     "}\n";
+
+/* This tests the proposed RGBA8_UNORM fallback for the RHI's RGBA8_UINT
+ * GS blend target. A=Cs, B=Cd, C=As, D=Cd in ((A-B)*C >> 7)+D. */
+static const char s_blend_vertex_shader[] =
+    "void main(\\n"
+    "    float2 aPosition,\\n"
+    "    float2 aTexcoord,\\n"
+    "    float4 out vPosition : POSITION,\\n"
+    "    float2 out vTexcoord : TEXCOORD0)\\n"
+    "{\\n"
+    "    vPosition = float4(aPosition, 0.0f, 1.0f);\\n"
+    "    vTexcoord = aTexcoord;\\n"
+    "}\\n";
+
+static const char s_blend_fragment_shader[] =
+    "float4 main(\\n"
+    "    float2 vTexcoord : TEXCOORD0,\\n"
+    "    uniform sampler2D uSrc,\\n"
+    "    uniform sampler2D uDst,\\n"
+    "    uniform float uClampMode) : COLOR\\n"
+    "{\\n"
+    "    float4 cs = floor(tex2D(uSrc, vTexcoord) * 255.0f + 0.5f);\\n"
+    "    float4 cd = floor(tex2D(uDst, vTexcoord) * 255.0f + 0.5f);\\n"
+    "    float3 v = floor(((cs.rgb - cd.rgb) * cs.a) * (1.0f / 128.0f)) + cd.rgb;\\n"
+    "    if (uClampMode > 0.5f) v = clamp(v, 0.0f, 255.0f);\\n"
+    "    else v = v - floor(v * (1.0f / 256.0f)) * 256.0f;\\n"
+    "    return float4(v, cs.a) * (1.0f / 255.0f);\\n"
+    "}\\n";
 
 static void init_checker_texture(void)
 {
@@ -190,6 +223,205 @@ static void draw_colored_triangle(GLuint program)
     glEnd();
 }
 
+static GLuint create_unorm_blend_program(void)
+{
+    GLuint vertex = compile_cg_shader(GL_CG_VERTEX_SHADER_EXT, s_blend_vertex_shader);
+    GLuint fragment = compile_cg_shader(GL_CG_FRAGMENT_SHADER_EXT, s_blend_fragment_shader);
+    GLuint program;
+    GLint linked = GL_FALSE;
+
+    if (vertex == 0 || fragment == 0) {
+        if (vertex != 0) glDeleteShader(vertex);
+        if (fragment != 0) glDeleteShader(fragment);
+        return 0;
+    }
+
+    program = glCreateProgram();
+    if (program == 0) {
+        glDeleteShader(vertex);
+        glDeleteShader(fragment);
+        probe_log("UNORM blend test could not allocate a program");
+        return 0;
+    }
+    glAttachShader(program, vertex);
+    glAttachShader(program, fragment);
+    glBindAttribLocation(program, 0, "aPosition");
+    glBindAttribLocation(program, 1, "aTexcoord");
+    glLinkProgram(program);
+    glGetProgramiv(program, GL_LINK_STATUS, &linked);
+    glDeleteShader(vertex);
+    glDeleteShader(fragment);
+    if (linked != GL_TRUE) {
+        probe_shader_log("UNORM blend test program link failed", program, 1);
+        probe_log_gl_error("UNORM blend test link");
+        glDeleteProgram(program);
+        return 0;
+    }
+    probe_log("UNORM blend test shader link passed");
+    return program;
+}
+
+static int test_unorm_integer_blend_emulation(void)
+{
+    static const BlendTestVertex vertices[] = {
+        {{-1.0f, -1.0f}, {0.0f, 0.0f}},
+        {{ 1.0f, -1.0f}, {1.0f, 0.0f}},
+        {{-1.0f,  1.0f}, {0.0f, 1.0f}},
+        {{ 1.0f,  1.0f}, {1.0f, 1.0f}},
+    };
+    static const struct {
+        unsigned char src[4];
+        unsigned char dst[4];
+        float clamp_mode;
+        unsigned char expected[4];
+        const char *name;
+    } cases[] = {
+        {{200, 100,  50,  64}, {100, 80,  20, 255}, 1.0f, {150,  90,  35,  64}, "clamped blend"},
+        {{  0,  20,  40, 255}, {255, 80, 200, 255}, 0.0f, {  2, 216, 137, 255}, "wrapped negative blend"},
+        {{255, 255, 255, 255}, {  0,  0,   0, 255}, 1.0f, {255, 255, 255, 255}, "clamped overflow"},
+    };
+    GLuint textures[3] = {0, 0, 0};
+    GLuint framebuffer = 0;
+    GLuint program = 0;
+    GLint src_location, dst_location, clamp_location;
+    int ok = 0;
+
+    program = create_unorm_blend_program();
+    if (program == 0) {
+        probe_log("UNORM integer blend emulation test: shader unavailable");
+        goto cleanup;
+    }
+
+    glGenTextures(3, textures);
+    if (textures[0] == 0 || textures[1] == 0 || textures[2] == 0) {
+        probe_log("UNORM integer blend emulation test: texture allocation failed");
+        goto cleanup;
+    }
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, textures[0]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE,
+                 cases[0].src);
+
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, textures[1]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE,
+                 cases[0].dst);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, textures[2]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 4, 4, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+
+    glGenFramebuffers(1, &framebuffer);
+    if (framebuffer == 0) {
+        probe_log("UNORM integer blend emulation test: framebuffer allocation failed");
+        goto cleanup;
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                           textures[2], 0);
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+        probe_log("UNORM integer blend emulation test: framebuffer incomplete");
+        goto cleanup;
+    }
+
+    src_location = glGetUniformLocation(program, "uSrc");
+    dst_location = glGetUniformLocation(program, "uDst");
+    clamp_location = glGetUniformLocation(program, "uClampMode");
+    if (src_location < 0 || dst_location < 0 || clamp_location < 0) {
+        probe_log("UNORM integer blend emulation test: required shader uniform missing");
+        goto cleanup;
+    }
+
+    glViewport(0, 0, 4, 4);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_BLEND);
+    glDisable(GL_CULL_FACE);
+    glUseProgram(program);
+    glUniform1i(src_location, 0);
+    glUniform1i(dst_location, 1);
+    glEnableVertexAttribArray(0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(BlendTestVertex),
+                          vertices[0].position);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(BlendTestVertex),
+                          vertices[0].texcoord);
+
+    ok = 1;
+    for (unsigned int i = 0; i < sizeof(cases) / sizeof(cases[0]); ++i) {
+        unsigned char actual[4] = {0, 0, 0, 0};
+        GLenum error;
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, textures[0]);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE,
+                        cases[i].src);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, textures[1]);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE,
+                        cases[i].dst);
+        glUniform1f(clamp_location, cases[i].clamp_mode);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        glReadPixels(0, 0, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, actual);
+        error = glGetError();
+        if (error != GL_NO_ERROR) {
+            FILE *out = s_log != NULL ? s_log : stderr;
+            fprintf(out, "%s: GL error 0x%04x\n", cases[i].name, (unsigned int)error);
+            fflush(out);
+            ok = 0;
+            break;
+        }
+        for (unsigned int channel = 0; channel < 4; ++channel) {
+            if (actual[channel] != cases[i].expected[channel]) {
+                FILE *out = s_log != NULL ? s_log : stderr;
+                fprintf(out, "%s mismatch channel %u: expected %u, got %u\n",
+                        cases[i].name, channel, cases[i].expected[channel], actual[channel]);
+                fflush(out);
+                ok = 0;
+                break;
+            }
+        }
+        if (!ok) break;
+        if (s_log != NULL) {
+            fprintf(s_log, "%s passed: RGBA=(%u,%u,%u,%u)\n", cases[i].name,
+                    actual[0], actual[1], actual[2], actual[3]);
+            fflush(s_log);
+        }
+    }
+
+    if (ok) {
+        probe_log("UNORM integer blend emulation: all byte-exact cases passed");
+    } else {
+        probe_log("UNORM integer blend emulation: failed; RGBA8_UINT fallback remains unproven");
+    }
+
+cleanup:
+    glUseProgram(0);
+    glDisableVertexAttribArray(0);
+    glDisableVertexAttribArray(1);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    if (framebuffer != 0) glDeleteFramebuffers(1, &framebuffer);
+    if (textures[0] != 0 || textures[1] != 0 || textures[2] != 0) glDeleteTextures(3, textures);
+    if (program != 0) glDeleteProgram(program);
+    glViewport(0, 0, 960, 544);
+    glEnable(GL_DEPTH_TEST);
+    return ok;
+}
+
 static void draw_textured_depth_probe(void)
 {
     /* The solid quad is farther away than the alpha-textured quad. */
@@ -255,6 +487,11 @@ int main(void)
         glClearColor(0.28f, 0.015f, 0.025f, 1.0f);
     }
 
+    const int unorm_blend_ok = test_unorm_integer_blend_emulation();
+    if (program != 0 && !unorm_blend_ok) {
+        glClearColor(0.28f, 0.12f, 0.015f, 1.0f);
+    }
+
     /* Shader failure is shown by the red background, not misreported as a
      * texture-upload failure through a stale GL error flag. */
     while (glGetError() != GL_NO_ERROR) {
@@ -310,9 +547,11 @@ int main(void)
     if (program != 0) {
         glDeleteProgram(program);
     }
-    probe_log(program != 0 ? "Probe ended: Cg shader path passed" :
-              "Probe ended: Cg shader path failed; fixed-function fallback was used");
+    const int exit_code = program == 0 ? 4 : !unorm_blend_ok ? 5 : 0;
+    probe_log(exit_code == 0 ? "Probe ended: Cg shader and byte-exact UNORM blend tests passed" :
+              exit_code == 4 ? "Probe ended: Cg shader path failed; fixed-function fallback was used" :
+              "Probe ended: UNORM integer blend emulation failed");
     if (s_log != NULL) fclose(s_log);
-    sceKernelExitProcess(program != 0 ? 0 : 4);
-    return program != 0 ? 0 : 4;
+    sceKernelExitProcess(exit_code);
+    return exit_code;
 }
