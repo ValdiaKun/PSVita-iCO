@@ -85,7 +85,7 @@ if(ICO_AUDIO_VITA)
     target_sources(ico_sndn2 PRIVATE out_vita.c)
     target_compile_definitions(ico_sndn2 PRIVATE ICO_AUDIO_VITA=1)
     # sceAudioOut* symbols are supplied by VitaSDK's audio output stub.
-    target_link_libraries(ico_sndn2 PUBLIC SceAudioOut_stub)
+    target_link_libraries(ico_sndn2 PUBLIC SceAudio_stub)
 elseif(NOT ICO_HEADLESS AND TARGET SDL3::SDL3-shared)
     target_sources(ico_sndn2 PRIVATE out_sdl.c)
     target_compile_definitions(ico_sndn2 PRIVATE ICO_AUDIO_SDL=1)
