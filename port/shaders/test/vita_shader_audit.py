@@ -19,6 +19,7 @@ EXPECTED_FEATURES = {
     "fragment_depth": ("blit.hlsl", "SV_Depth"),
     "integer_texture": ("blend_int.hlsl", "Texture2D<uint4>"),
     "integer_load": ("blend_int.hlsl", ".Load("),
+    "integer_target": ("blend_int.hlsl", "uint4 blend_int_ps"),
     "precise_math": ("vu_skin.hlsl", "precise"),
     "dual_source_output": ("common.hlsli", "SV_Target1"),
 }
@@ -27,7 +28,7 @@ FEATURE_PATTERNS = {
     "fragment_depth": r"\bSV_Depth\b",
     "integer_texture": r"\bTexture\w*\s*<\s*(?:u?int\d*|uint\d+)\s*>",
     "integer_load": r"\.Load\s*\(",
-    "integer_target": r"\buint\d*\s+\w+\s*:\s*SV_Target\d*",
+    "integer_target": r"\buint\d*\s+\w+\s*\([^)]*\)\s*:\s*SV_Target\d*",
     "precise_math": r"\bprecise\b",
     "dual_source_output": r"\bSV_Target1\b",
     "storage_buffer": r"\b(?:StructuredBuffer|ByteAddressBuffer|RWStructuredBuffer)\s*<",
