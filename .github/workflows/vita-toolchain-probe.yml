@@ -560,6 +560,42 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      - name: Build project-owned vitaGL triangle probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          probe="$GITHUB_WORKSPACE/port/render/vita"
+          make -C "$probe" clean
+          make -C "$probe" -j2
+          vpk="$probe/ico_vita_gl_probe.vpk"
+          test -s "$probe/ico_vita_gl_probe.elf"
+          test -s "$probe/ico_vita_gl_probe.velf"
+          test -s "$probe/eboot.bin"
+          test -s "$vpk"
+          python3 - "$vpk" <<'PY'
+          import sys
+          import zipfile
+          path = sys.argv[1]
+          with zipfile.ZipFile(path) as package:
+              bad = package.testzip()
+              if bad is not None:
+                  raise SystemExit(f"corrupt VPK member: {bad}")
+              names = set(package.namelist())
+          required = {"eboot.bin", "sce_sys/param.sfo"}
+          missing = required - names
+          if missing:
+              raise SystemExit(f"project-owned probe VPK missing entries: {sorted(missing)}")
+          print("Project-owned Vita GL probe VPK verified:", ", ".join(sorted(names)))
+          PY
+
+      - name: Upload project-owned Vita GL probe VPK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ico-project-owned-vita-gl-probe
+          path: ${{ github.workspace }}/port/render/vita/ico_vita_gl_probe.vpk
+          if-no-files-found: error
+          retention-days: 7
+
   diagnostics-portability-audit:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
