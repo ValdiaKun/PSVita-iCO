@@ -513,6 +513,161 @@ cleanup:
     return ok;
 }
 
+static void draw_fbo_quad(float left, float right, float z)
+{
+    glBegin(GL_TRIANGLE_STRIP);
+    glVertex3f(left, -1.0f, z);
+    glVertex3f(right, -1.0f, z);
+    glVertex3f(left, 1.0f, z);
+    glVertex3f(right, 1.0f, z);
+    glEnd();
+}
+
+/* Exercise an offscreen RGBA8 target with a combined depth/stencil attachment.
+ * The left half is written red at depth 0.5 and stencil 1; a farther blue
+ * draw must fail depth on the left but pass on the right; a final green draw
+ * with stencil == 1 must affect only the left half. */
+static int test_offscreen_depth_stencil(void)
+{
+    GLuint color_texture = 0;
+    GLuint framebuffer = 0;
+    GLuint depth_stencil = 0;
+    unsigned char left_pixel[4] = {0, 0, 0, 0};
+    unsigned char right_pixel[4] = {0, 0, 0, 0};
+    GLenum status;
+    GLenum error;
+    int ok = 0;
+
+    glActiveTexture(GL_TEXTURE0);
+    glGenTextures(1, &color_texture);
+    if (color_texture == 0) {
+        probe_log("offscreen depth/stencil test: texture allocation failed");
+        goto cleanup;
+    }
+    glBindTexture(GL_TEXTURE_2D, color_texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 4, 4, 0, GL_RGBA,
+                 GL_UNSIGNED_BYTE, NULL);
+
+    glGenRenderbuffers(1, &depth_stencil);
+    if (depth_stencil == 0) {
+        probe_log("offscreen depth/stencil test: renderbuffer allocation failed");
+        goto cleanup;
+    }
+    glBindRenderbuffer(GL_RENDERBUFFER, depth_stencil);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, 4, 4);
+
+    glGenFramebuffers(1, &framebuffer);
+    if (framebuffer == 0) {
+        probe_log("offscreen depth/stencil test: framebuffer allocation failed");
+        goto cleanup;
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                           color_texture, 0);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT,
+                              GL_RENDERBUFFER, depth_stencil);
+    status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    error = glGetError();
+    if (status != GL_FRAMEBUFFER_COMPLETE || error != GL_NO_ERROR) {
+        FILE *out = s_log != NULL ? s_log : stderr;
+        fprintf(out, "offscreen depth/stencil FBO incomplete: status=0x%04x error=0x%04x\n",
+                (unsigned int)status, (unsigned int)error);
+        fflush(out);
+        goto cleanup;
+    }
+
+    glViewport(0, 0, 4, 4);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_BLEND);
+    glDisable(GL_CULL_FACE);
+    glEnable(GL_DEPTH_TEST);
+    glDepthMask(GL_TRUE);
+    glDepthFunc(GL_LESS);
+    glEnable(GL_STENCIL_TEST);
+    glStencilMask(0xffu);
+    glStencilFunc(GL_ALWAYS, 1, 0xffu);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClearDepthf(1.0f);
+    glClearStencil(0);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+    glColor4f(1.0f, 0.0f, 0.0f, 1.0f);
+    draw_fbo_quad(-1.0f, 0.0f, 0.0f);
+
+    glStencilMask(0u);
+    glStencilFunc(GL_ALWAYS, 0, 0xffu);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+    glColor4f(0.0f, 0.0f, 1.0f, 1.0f);
+    draw_fbo_quad(-1.0f, 1.0f, 0.5f);
+
+    glStencilMask(0xffu);
+    glStencilFunc(GL_EQUAL, 1, 0xffu);
+    glDepthFunc(GL_ALWAYS);
+    glColor4f(0.0f, 1.0f, 0.0f, 1.0f);
+    draw_fbo_quad(-1.0f, 1.0f, 0.0f);
+
+    glReadPixels(1, 2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, left_pixel);
+    glReadPixels(3, 2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, right_pixel);
+    error = glGetError();
+    if (error != GL_NO_ERROR) {
+        FILE *out = s_log != NULL ? s_log : stderr;
+        fprintf(out, "offscreen depth/stencil draw/readback failed: GL error 0x%04x\n",
+                (unsigned int)error);
+        fflush(out);
+        goto cleanup;
+    }
+    if (left_pixel[0] != 0 || left_pixel[1] != 255 || left_pixel[2] != 0 ||
+        right_pixel[0] != 0 || right_pixel[1] != 0 || right_pixel[2] != 255) {
+        FILE *out = s_log != NULL ? s_log : stderr;
+        fprintf(out,
+                "offscreen depth/stencil mismatch: left=(%u,%u,%u,%u) right=(%u,%u,%u,%u)\n",
+                left_pixel[0], left_pixel[1], left_pixel[2], left_pixel[3],
+                right_pixel[0], right_pixel[1], right_pixel[2], right_pixel[3]);
+        fflush(out);
+        goto cleanup;
+    }
+
+    probe_log("offscreen RGBA8 + depth/stencil FBO test passed");
+    ok = 1;
+
+cleanup:
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glBindRenderbuffer(GL_RENDERBUFFER, 0);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    if (framebuffer != 0) {
+        glDeleteFramebuffers(1, &framebuffer);
+    }
+    if (depth_stencil != 0) {
+        glDeleteRenderbuffers(1, &depth_stencil);
+    }
+    if (color_texture != 0) {
+        glDeleteTextures(1, &color_texture);
+    }
+    glViewport(0, 0, 960, 544);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glOrtho(0.0, 960.0, 544.0, 0.0, -1.0, 1.0);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glDisable(GL_STENCIL_TEST);
+    glStencilMask(0xffu);
+    glEnable(GL_DEPTH_TEST);
+    glDepthMask(GL_TRUE);
+    glDepthFunc(GL_LEQUAL);
+    glDisable(GL_BLEND);
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_CULL_FACE);
+    return ok;
+}
+
 static void draw_textured_depth_probe(void)
 {
     /* The solid quad is farther away than the alpha-textured quad. */
@@ -619,10 +774,17 @@ int main(void)
         }
     }
 
+    const int depth_stencil_ok = test_offscreen_depth_stencil();
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texture);
     const int buffers_ok = program != 0 && init_buffer_geometry();
-    if (program != 0 && !buffers_ok) {
+    if (program == 0) {
+        glClearColor(0.25f, 0.015f, 0.015f, 1.0f);
+    } else if (!buffers_ok) {
         glClearColor(0.28f, 0.015f, 0.20f, 1.0f);
-    } else if (program != 0 && !unorm_blend_ok) {
+    } else if (!depth_stencil_ok) {
+        glClearColor(0.015f, 0.08f, 0.28f, 1.0f);
+    } else if (!unorm_blend_ok) {
         glClearColor(0.28f, 0.12f, 0.015f, 1.0f);
     }
 
@@ -645,11 +807,12 @@ int main(void)
     }
     const int exit_code = program == 0 ? 4 : !buffers_ok ? 6 :
                           (!s_indexed_draw_checked || s_indexed_draw_failed) ? 7 :
-                          !unorm_blend_ok ? 5 : 0;
-    probe_log(exit_code == 0 ? "Probe ended: Cg shaders, vertex/index buffers, and byte-exact UNORM blend tests passed" :
+                          !depth_stencil_ok ? 8 : !unorm_blend_ok ? 5 : 0;
+    probe_log(exit_code == 0 ? "Probe ended: Cg shaders, indexed buffers, offscreen depth/stencil, and byte-exact blend tests passed" :
               exit_code == 4 ? "Probe ended: Cg shader path failed; fixed-function fallback was used" :
               exit_code == 6 ? "Probe ended: vertex/index buffer allocation/upload failed" :
               exit_code == 7 ? "Probe ended: indexed VBO draw failed or was not executed" :
+              exit_code == 8 ? "Probe ended: offscreen depth/stencil test failed" :
               "Probe ended: UNORM integer blend emulation failed");
     if (s_log != NULL) fclose(s_log);
     sceKernelExitProcess(exit_code);
