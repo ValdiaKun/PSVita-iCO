@@ -16,7 +16,7 @@ include(cmake/IcoExclusions.cmake)
 option(ICO_HEADLESS "Build the headless ico_pc (no window, no renderer)" OFF)
 option(ICO_FPTRAP "Unmask float divide-by-zero and invalid in simulation mode" OFF)
 option(ICO_BUILD_BLOCKED "Also compile the sources cmake/IcoExclusions.cmake blocks" OFF)
-option(ICO_LINK_EXE "Link the ico_pc executable (fails while symbols are unresolved)" OFF)
+option(ICO_LINK_EXE "Link the ico_pc executable" OFF)
 option(ICO_INPUT_VITA "Build the native PlayStation Vita controller adapter and platform services" OFF)
 
 # The windowed target below is still SDL3 + desktop Vulkan/D3D12. Do not let a
@@ -28,6 +28,13 @@ if((CMAKE_SYSTEM_NAME STREQUAL "Vita" OR CMAKE_C_COMPILER MATCHES "arm-vita-eabi
         "Native Vita windowing/rendering is not implemented. Configure with "
         "-DICO_HEADLESS=ON for compile-only platform checks; this is not a "
         "runnable ICO Vita application.")
+endif()
+
+if(ICO_INPUT_VITA)
+    # VitaSDK's default short-enum ABI disagrees with the original game's
+    # 32-bit enum layout. Apply this to every linked object, not just ico_game,
+    # so cross-library enums remain ABI-compatible.
+    add_compile_options(-fno-short-enums)
 endif()
 
 # The retail game ran with its asserts live (the reconstruction calls

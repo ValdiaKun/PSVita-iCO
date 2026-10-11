@@ -305,8 +305,7 @@ jobs:
               print(f"CMake-selected Vita audio compile passed: {wanted.name}", flush=True)
           PY
           # Generate the executable's build metadata and compile its headless
-          # host entry-point/platform sources. This is deliberately compile-only:
-          # a full ICO link is still blocked by unresolved game symbols.
+          # host entry-point/platform sources before attempting the complete link.
           cmake --build "$build" --target ico_build_commit --parallel 2
           python3 - "$build/compile_commands.json" "$root/port/platform/main_host.c" "$root/port/platform/trace_host.c" "$root/port/platform/host_config.c" "$root/port/platform/host_loop.c" <<'PY'
           import json
@@ -339,6 +338,25 @@ jobs:
               print("Compile host entry:", command, flush=True)
               subprocess.run(shlex.split(command), cwd=entry["directory"], check=True)
               print(f"Vita host-source compile passed: {wanted.name}", flush=True)
+          PY
+          # Every object that crosses the game/platform boundary must use the
+          # same 32-bit enum ABI. Check representative objects from each layer.
+          python3 - "$build/compile_commands.json" "$root/port/platform/main_host.c" "$root/port/platform/host_loop.c" "$root/port/input/input_vita.c" "$root/port/audio/out_vita.c" "$root/ico2/sugipon/src/worm.c" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          database = Path(sys.argv[1])
+          entries = json.loads(database.read_text(encoding="utf-8"))
+          for source in sys.argv[2:]:
+              wanted = Path(source).resolve()
+              matches = [entry for entry in entries if Path(entry["file"]).resolve() == wanted]
+              if len(matches) != 1:
+                  raise SystemExit(f"expected one compile command for {wanted}, got {len(matches)}")
+              command = matches[0].get("command", "")
+              if "-fno-short-enums" not in command:
+                  raise SystemExit(f"32-bit enum ABI flag missing from {wanted}")
+              print(f"Vita enum ABI flag verified: {wanted.name}", flush=True)
           PY
           # Build both static libraries to test CMake source selection and
           # dependency integration, not just standalone object compilation.

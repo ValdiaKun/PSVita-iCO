@@ -25,6 +25,8 @@ target_compile_options(ico_input PRIVATE ${ICO_SEMANTIC_OPTIONS} ${ICO_PORT_WARN
 if(ICO_INPUT_VITA)
     target_sources(ico_input PRIVATE input_vita.c)
     target_compile_definitions(ico_input PUBLIC ICO_INPUT_VITA=1)
+    # sceCtrl* symbols are supplied by VitaSDK's controller stub library.
+    target_link_libraries(ico_input PUBLIC SceCtrl_stub)
 endif()
 # stick fix and mirror are port/game/options.c's
 target_link_libraries(ico_input PUBLIC ico_options)
