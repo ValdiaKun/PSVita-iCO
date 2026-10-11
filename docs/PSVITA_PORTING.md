@@ -87,7 +87,7 @@ Vita game build:
 - **Latest verified CI run (run 38081797560, commit `ef89a82785d58a5dd9e9d94c9941813a74f48b5f`):** all six jobs passed: VitaSDK cross-compilation, the 214-unit game-source audit, the portable softdouble/audio/controller regressions, the Vita arena mock regression, the diagnostics portability blocker check, and the independent vitaGL renderer feasibility build. The SDK job also compiled the selected 23 CPU-side renderer units, 14 platform-service units, and Vita input/audio adapters, and built/validated the trivial SDK smoke VPK. None of those compile-only checks links the ICO game.
 - **Vita memory/FP platform fixes:** arena.c now uses a Vita user-RW kernel memblock instead of unavailable sys/mman.h, checks allocation/base-address errors, and zeroes the allocation. This compiles in VitaSDK CI, but allocating the full 41 MiB block on hardware remains unverified. fpenv.c uses ARM VFP FPSCR controls for rounding/flush-to-zero; hardware FP exception trapping is not provided by the Cortex-A9 VFP path, so ICO_FPTRAP is rejected rather than silently emulated. Runtime FP semantics still need device tests.
 - **Vita arena failure-path regression (verified in run 38081797560):** `port/platform/test/arena_vita_test.c` compiles the Vita-specific `sceKernelAllocMemBlock` / `sceKernelGetMemBlockBase` path against a host mock. It exercises successful allocation, one-shot allocation failure and retry, base-address failure and cleanup/retry, 1 MiB alignment, zero-fill, and EE-address mapping. This checks the C branch and its recovery logic, not Vita kernel behavior.
-- **vitaGL renderer feasibility spike (verified in run 38081797560):** CI fetched vitaGL at pinned commit `dca4b9d143290d78ec043131a19be36c78cdc7b5`, built and installed `libvitaGL.a`, then compiled, linked, packaged, and structurally inspected its `samples/immediate_mode` colored-quad VPK. The package SHA-256 is `a3e3dd301874222942f35f2a2c4126ff344cf652205b64c6bd846b5809579ce7`; the CI artifact is `vitaGL-immediate-mode-probe-vpk`. This proves the pinned library and sample can be built with VitaSDK; it does **not** prove that the sample runs or visibly renders on hardware/emulator, and it is not an ICO build. vitaGL requires the console's `libshacccg.suprx` runtime shader compiler. The actual renderer integration remains unimplemented: `rhi_backend.h` defines 68 backend operations, while `embed_shaders.py` emits only SPIR-V and DXIL blobs. ICO's HLSL includes `StructuredBuffer<float4>`, integer `Texture2D<uint4>` plus `.Load`, `SV_VertexID`, precise floating-point sequences, integer render targets, and dual-source blend outputs. A dedicated Vita backend and a compatible shader conversion/reimplementation path are still required; vitaGL is not a drop-in Vulkan replacement.
+- **vitaGL renderer direction selected; integration remains unimplemented:** use vitaGL as the native Vita graphics API, pinned initially to commit `dca4b9d143290d78ec043131a19be36c78cdc7b5`. CI has built and installed `libvitaGL.a`, and compiled, linked, packaged, and structurally inspected both an upstream colored-quad VPK and the project's own graphics probe. This proves build/package feasibility only; neither probe has been verified running on hardware/emulator, and neither is an ICO build. vitaGL requires the console's `libshacccg.suprx` runtime shader compiler. The RHI dispatcher still has 68 backend operations and `embed_shaders.py` emits only SPIR-V and DXIL blobs, so ICO is not yet rendering through vitaGL. The implementation contract and required gates are in [`VITAGL_RHI_INTEGRATION.md`](VITAGL_RHI_INTEGRATION.md).
 - **RHI contract and shader pipeline:** `port/rhi/rhi.h` describes a vertex +
   fragment pipeline (no compute), two frames in flight, storage-read buffers
   for bones/particles, and explicit render-target/state transitions. The shader
@@ -179,13 +179,15 @@ the host, and small on-device smoke tests for Vita-specific calls.
 - Build a Vita GPU capability matrix against the RHI's required formats and
   semantics, starting with RGBA8_UINT integer blending, stencil wrap, depth
   sampling/copies, storage-read data, and shader bindings.
-- Prototype a textured triangle with the actual Vita-supported graphics API,
-  then add targeted tests for the features above before implementing the game
-  renderer.
-- Choose a renderer only after a real device/API probe. Do not assume Vulkan is
-  available on Vita.
-- Then implement the minimum RHI needed by the game's renderer, with explicit
-  fallbacks for unsupported formats/features.
+- Use vitaGL as the selected Vita graphics API. First run the existing
+  project-owned probe on hardware or a compatible emulator; CI packaging is not
+  runtime proof.
+- Add a Vita-only RHI backend and display/context lifecycle without pulling SDL,
+  Vulkan, or D3D12 into the Vita target. Implement a minimal clear/present and
+  textured-quad path through the real RHI dispatcher.
+- Add explicit tests/fallbacks for unsupported shader features, integer blend
+  targets, depth/stencil, texture copies, and resource lifetime before enabling
+  the corresponding ICO render passes. See `VITAGL_RHI_INTEGRATION.md`.
 
 ### Gate 5 — Boot and gameplay
 
