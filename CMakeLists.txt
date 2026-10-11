@@ -19,6 +19,17 @@ option(ICO_BUILD_BLOCKED "Also compile the sources cmake/IcoExclusions.cmake blo
 option(ICO_LINK_EXE "Link the ico_pc executable (fails while symbols are unresolved)" OFF)
 option(ICO_INPUT_VITA "Build the native PlayStation Vita controller adapter and platform services" OFF)
 
+# The windowed target below is still SDL3 + desktop Vulkan/D3D12. Do not let a
+# Vita toolchain drift into that path and fail later on unrelated desktop
+# dependencies; until a Vita display loop and RHI backend exist, only the
+# headless configuration is a supported compile-audit configuration.
+if(CMAKE_SYSTEM_NAME STREQUAL "Vita" AND NOT ICO_HEADLESS)
+    message(FATAL_ERROR
+        "Native Vita windowing/rendering is not implemented. Configure with "
+        "-DICO_HEADLESS=ON for compile-only platform checks; this is not a "
+        "runnable ICO Vita application.")
+endif()
+
 # The retail game ran with its asserts live (the reconstruction calls
 # __assert where the macro expanded), so no configuration defines NDEBUG:
 # an assert's expression is evaluated as on the PS2.
