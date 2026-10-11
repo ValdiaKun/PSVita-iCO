@@ -385,7 +385,8 @@ static int test_unorm_integer_blend_emulation(void)
             if (actual[channel] != cases[i].expected[channel]) {
                 FILE *out = s_log != NULL ? s_log : stderr;
                 fprintf(out, "%s mismatch channel %u: expected %u, got %u\n",
-                        cases[i].name, channel, cases[i].expected[channel], actual[channel]);
+                        cases[i].name, channel, (unsigned int)cases[i].expected[channel],
+                        (unsigned int)actual[channel]);
                 fflush(out);
                 ok = 0;
                 break;
@@ -394,7 +395,8 @@ static int test_unorm_integer_blend_emulation(void)
         if (!ok) break;
         if (s_log != NULL) {
             fprintf(s_log, "%s passed: RGBA=(%u,%u,%u,%u)\n", cases[i].name,
-                    actual[0], actual[1], actual[2], actual[3]);
+                    (unsigned int)actual[0], (unsigned int)actual[1],
+                    (unsigned int)actual[2], (unsigned int)actual[3]);
             fflush(s_log);
         }
     }
