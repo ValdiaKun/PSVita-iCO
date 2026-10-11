@@ -224,3 +224,32 @@ CI compiles `main_host.c`, `trace_host.c`, `host_config.c`, and `host_loop.c` in
 - **recvx-vita reference audit:** `Rinnegatamante/recvx-vita` implements a PS2 GS-oriented layer in `platform/gs/gs_draw.c`. Its design treats GS frame buffers as GL render targets, maintains a texture cache for GS memory, and handles uploads/readbacks for memory regions that overlap render targets. That is a valuable reference for PS2 graphics semantics, but ICO's current code is not a PS2 GS emulator; only transferable concepts should be reused.
 - **PS2Recomp reference audit:** `ran-j/PS2Recomp` provides an experimental PS2 ELF-to-C++ path and a Vita runtime build script with a PVR/gl4es/SDL2/raylib dependency stack. Its own Vita script disables building the recompiler/analyzer for the Vita runtime build and warns when game registration code is absent. This is a research alternative, not evidence that ICO's original PS2 ELF can be recompiled or that its runtime supplies ICO's required renderer.
 - **Next engineering gate:** define a Vita RHI backend selection path and document an operation/capability mapping against `RhiBackendTable`; separately classify HLSL features that need a Vita shader rewrite or a different implementation. Start with a minimal backend test that creates a context, clears a target, draws textured geometry, and presents a frame. Only then integrate the ICO renderer incrementally. A triangle or quad test proves only that specific graphics path, not ICO scene rendering.
+
+
+## Native shader and ABI follow-up (2026-10-11)
+
+### vitaGL probe now covers a shader path
+
+The project-owned `port/render/vita/vita_gl_probe.c` has been expanded beyond the original colored triangle. It now checks the return value from `vglInit`, attempts to compile/link a minimal native Cg vertex/fragment shader using `GL_CG_VERTEX_SHADER_EXT` and `GL_CG_FRAGMENT_SHADER_EXT`, draws vertex-attributed geometry when that program is available, uploads a small RGBA checker texture with alpha, and exercises depth testing and alpha blending. A red clear color indicates Cg shader compilation/link failure; fatal graphics initialization/texture errors return nonzero. The probe exits on START.
+
+The `vitagl-renderer-probe` job passed in CI run 38110569687 and packaged artifact `ico-project-owned-vita-gl-probe` (artifact ID 11691427832). This confirms VitaSDK compilation and VPK packaging only. The Cg source is compiled by the shader compiler at runtime, so CI has **not** verified that it compiles on a Vita, and the VPK has not been run on physical hardware or an emulator. The device must have the required `libshacccg.suprx` installed.
+
+### THUG Vita shader lessons
+
+Source inspection of `iwannagooutside/thug-vita-port/Code/Gfx/Vita/p_shader_decor.cpp` confirms it uses vitaGL's native Cg shader extensions and `libshacccg`, rather than assuming that all shaders go through the GLSL translator. It also caches compiled GXP binaries on disk: the source comments report roughly 270–340 ms per variant and about 17 seconds for 60 variants, which makes shader caching/startup latency a design requirement if ICO adopts a comparable runtime-compilation path. This is a reference pattern, not a ready-made ICO shader conversion.
+
+### Concrete ICO shader compatibility blockers
+
+Inspection of the existing HLSL sources shows that the Vita path cannot simply feed the current SPIR-V/DXIL shader blobs to vitaGL:
+
+- Several shaders (`blit.hlsl`, `crt.hlsl`, `fx_sprite.hlsl`, `vu_*.hlsl`, and `yuv.hlsl`) generate geometry from `SV_VertexID`; a Vita shader path must supply equivalent generated vertices or explicit attributes.
+- `blend_int.hlsl` uses `Texture2D<uint4>`, integer `.Load()` operations, and a `uint4` fragment output targeting `RGBA8_UINT`. This is not a direct GLES-style texture/render-target mapping and needs a deliberate fallback or implementation.
+- `blit.hlsl` writes `SV_Depth`; depth-output behavior must be validated against the Vita shader/API path.
+- VU shader sources use HLSL `precise` expressions to preserve arithmetic behavior. Any rewrite must retain the intended operation order and be checked against existing CPU/reference tests.
+- The existing shader toolchain embeds DXC-generated SPIR-V/DXIL. A Vita-native Cg/GLSL shader set or a verified translation step is still missing; converting one shader family is a prototype, not proof that the full set works.
+
+### Enum ABI warning source narrowed down
+
+CI run 38110896895 passed all six jobs, including the headless `ico_pc` link and VPK validation. The link still reports 371 enum-size metadata warnings. The new diagnostic inspected archive members: a representative project object (`libico_platform.a`), `libico_libchdr.a`, and `libico_libmpeg2.a` all report `Tag_ABI_enum_size: int`; the VitaSDK `arm-vita-eabi/lib/crt0.o` reports `Tag_ABI_enum_size: small`. The final ELF also reports `small`, while `main_host.c.obj` reports `int`.
+
+This narrows the warning provenance to a real metadata difference involving the VitaSDK startup object and the project's 32-bit-enum objects. It does **not** prove that the mismatch is harmless at all ABI boundaries. Keep the warnings visible and keep the project compile flags consistent; do not change to short enums or suppress the linker warning until the startup object's enum usage and any cross-object enum interfaces have been reviewed. The resulting executable is still a headless/null-graphics link, not an ICO renderer or playable build.
