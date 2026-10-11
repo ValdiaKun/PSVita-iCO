@@ -281,11 +281,9 @@ int main(void)
     {
         GLenum texture_error = glGetError();
         if (texture_error != GL_NO_ERROR) {
-            {
-                FILE *out = s_log != NULL ? s_log : stderr;
-                fprintf(out, "texture upload failed: GL error 0x%04x\n", (unsigned int)texture_error);
-                fflush(out);
-            }
+            FILE *out = s_log != NULL ? s_log : stderr;
+            fprintf(out, "texture upload failed: GL error 0x%04x\n", (unsigned int)texture_error);
+            fflush(out);
             glDeleteTextures(1, &texture);
             if (program != 0) {
                 glDeleteProgram(program);
