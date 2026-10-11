@@ -205,6 +205,11 @@ int main(void)
         glClearColor(0.28f, 0.015f, 0.025f, 1.0f);
     }
 
+    /* Shader failure is shown by the red background, not misreported as a
+     * texture-upload failure through a stale GL error flag. */
+    while (glGetError() != GL_NO_ERROR) {
+    }
+
     init_checker_texture();
     glGenTextures(1, &texture);
     if (texture == 0) {
