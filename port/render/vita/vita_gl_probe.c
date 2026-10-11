@@ -4,7 +4,7 @@
  * Minimal in-repository Vita graphics integration probe. This is deliberately
  * independent of ICO's RHI: it verifies that project-owned code can initialize
  * vitaGL, compile a native Cg shader, submit colored and textured geometry,
- * exercise depth/blend state, present frames, and exit on the Vita pad. It is
+ * exercise buffers, indexed geometry, depth/blend state, present frames, and exit on the Vita pad. It is
  * not the ICO renderer and does not load game data.
  */
 #include <psp2/ctrl.h>
@@ -220,7 +220,7 @@ static int init_buffer_geometry(void)
     error = glGetError();
     if (error != GL_NO_ERROR) {
         FILE *out = s_log != NULL ? s_log : stderr;
-        fprintf(out, "vertex/index buffer upload failed: GL error 0x%04x\\n",
+        fprintf(out, "vertex/index buffer upload failed: GL error 0x%04x\n",
                 (unsigned int)error);
         fflush(out);
         goto fail;
