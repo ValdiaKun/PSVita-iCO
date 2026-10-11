@@ -1,3 +1,5 @@
+#include "../../../shaders/test/hlsl_shim.h"
+#include "../../../shaders/gs_math.hlsli"
 #include "../vita_blend_reference.h"
 
 #include <stdio.h>
@@ -42,7 +44,38 @@ int main(void)
         fprintf(stderr, "%d vitaGL blend reference vector(s) failed\n", failures);
         return 1;
     }
-    printf("%zu vitaGL blend reference vectors passed\n",
-           sizeof(vectors) / sizeof(vectors[0]));
+
+    /*
+     * Compare the vitaGL CPU oracle against ICO's canonical GS arithmetic for
+     * every 8-bit source, destination and alpha value in both COLCLAMP modes.
+     * This prevents a test-vector correction from drifting away from the
+     * renderer's established integer semantics.
+     */
+    unsigned long checks = 0;
+    for (unsigned int clamp_mode = 0; clamp_mode < 2; ++clamp_mode) {
+        for (int source = 0; source < 256; ++source) {
+            for (int destination = 0; destination < 256; ++destination) {
+                for (int alpha = 0; alpha < 256; ++alpha) {
+                    const int expected = gs_blend_ch(source, destination, alpha,
+                                                     destination, clamp_mode);
+                    const uint8_t actual = vita_blend_reference_channel(
+                        (uint8_t)source, (uint8_t)destination, (uint8_t)alpha,
+                        (int)clamp_mode);
+                    if ((int)actual != expected) {
+                        fprintf(stderr,
+                                "FAIL GS parity: src=%d dst=%d alpha=%d clamp=%u "
+                                "expected=%d got=%u\n",
+                                source, destination, alpha, clamp_mode, expected,
+                                (unsigned int)actual);
+                        return 1;
+                    }
+                    ++checks;
+                }
+            }
+        }
+    }
+
+    printf("%zu fixed vectors and %lu canonical GS blend comparisons passed\n",
+           sizeof(vectors) / sizeof(vectors[0]), checks);
     return 0;
 }
