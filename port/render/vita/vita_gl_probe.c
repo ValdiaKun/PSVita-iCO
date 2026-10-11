@@ -3,15 +3,37 @@
  *
  * Minimal in-repository Vita graphics integration probe. This is deliberately
  * independent of ICO's RHI: it verifies that project-owned code can initialize
- * vitaGL, submit colored and textured geometry, exercise depth/blend state,
- * present frames, and exit on the Vita pad. It is not the ICO renderer and does
- * not load game data.
+ * vitaGL, compile a native Cg shader, submit colored and textured geometry,
+ * exercise depth/blend state, present frames, and exit on the Vita pad. It is
+ * not the ICO renderer and does not load game data.
  */
 #include <psp2/ctrl.h>
 #include <psp2/kernel/processmgr.h>
 #include <vitaGL.h>
 
+typedef struct ProbeVertex {
+    float position[3];
+    float color[4];
+} ProbeVertex;
+
 static unsigned char s_checker[4 * 4 * 4];
+
+static const char s_vertex_shader[] =
+    "void main(\n"
+    "    float3 aPosition,\n"
+    "    float4 aColor,\n"
+    "    float4 out vPosition : POSITION,\n"
+    "    float4 out vColor : COLOR)\n"
+    "{\n"
+    "    vPosition = float4(aPosition, 1.0f);\n"
+    "    vColor = aColor;\n"
+    "}\n";
+
+static const char s_fragment_shader[] =
+    "float4 main(float4 vColor : COLOR)\n"
+    "{\n"
+    "    return vColor;\n"
+    "}\n";
 
 static void init_checker_texture(void)
 {
@@ -28,11 +50,89 @@ static void init_checker_texture(void)
     }
 }
 
-static void draw_probe_scene(void)
+static GLuint compile_cg_shader(GLenum type, const char *source)
 {
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    GLuint shader = glCreateShader(type);
+    GLint compiled = GL_FALSE;
 
-    /* A distant colored triangle verifies interpolated vertex colors. */
+    if (shader == 0) {
+        return 0;
+    }
+
+    glShaderSource(shader, 1, &source, NULL);
+    glCompileShader(shader);
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
+    if (compiled != GL_TRUE) {
+        glDeleteShader(shader);
+        return 0;
+    }
+    return shader;
+}
+
+static GLuint create_cg_program(void)
+{
+    GLuint vertex = compile_cg_shader(GL_CG_VERTEX_SHADER_EXT, s_vertex_shader);
+    GLuint fragment = compile_cg_shader(GL_CG_FRAGMENT_SHADER_EXT, s_fragment_shader);
+    GLuint program;
+    GLint linked = GL_FALSE;
+
+    if (vertex == 0 || fragment == 0) {
+        if (vertex != 0) {
+            glDeleteShader(vertex);
+        }
+        if (fragment != 0) {
+            glDeleteShader(fragment);
+        }
+        return 0;
+    }
+
+    program = glCreateProgram();
+    if (program == 0) {
+        glDeleteShader(vertex);
+        glDeleteShader(fragment);
+        return 0;
+    }
+
+    glAttachShader(program, vertex);
+    glAttachShader(program, fragment);
+    glBindAttribLocation(program, 0, "aPosition");
+    glBindAttribLocation(program, 1, "aColor");
+    glLinkProgram(program);
+    glGetProgramiv(program, GL_LINK_STATUS, &linked);
+    glDeleteShader(vertex);
+    glDeleteShader(fragment);
+
+    if (linked != GL_TRUE) {
+        glDeleteProgram(program);
+        return 0;
+    }
+    return program;
+}
+
+static void draw_colored_triangle(GLuint program)
+{
+    static const ProbeVertex vertices[] = {
+        {{-0.78f, -0.70f, 0.0f}, {0.95f, 0.20f, 0.16f, 1.0f}},
+        {{ 0.00f,  0.78f, 0.0f}, {0.20f, 0.85f, 0.45f, 1.0f}},
+        {{ 0.78f, -0.70f, 0.0f}, {0.20f, 0.45f, 1.00f, 1.0f}},
+    };
+
+    if (program != 0) {
+        glUseProgram(program);
+        glEnableVertexAttribArray(0);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,
+                              sizeof(ProbeVertex), vertices[0].position);
+        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE,
+                              sizeof(ProbeVertex), vertices[0].color);
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glDisableVertexAttribArray(1);
+        glDisableVertexAttribArray(0);
+        glUseProgram(0);
+        return;
+    }
+
+    /* Visible fallback: a red background means the native Cg shader failed. */
     glDisable(GL_TEXTURE_2D);
     glDisable(GL_BLEND);
     glColor4f(0.95f, 0.20f, 0.16f, 1.0f);
@@ -43,8 +143,13 @@ static void draw_probe_scene(void)
     glColor4f(0.20f, 0.45f, 1.0f, 1.0f);
     glVertex3f(250.0f, 420.0f, -0.7f);
     glEnd();
+}
 
-    /* Draw a solid background quad, then a nearer alpha-textured quad. */
+static void draw_textured_depth_probe(void)
+{
+    /* The solid quad is farther away than the alpha-textured quad. */
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_BLEND);
     glColor4f(0.10f, 0.35f, 0.85f, 1.0f);
     glBegin(GL_TRIANGLE_STRIP);
     glVertex3f(80.0f, 170.0f, -0.3f);
@@ -75,6 +180,7 @@ int main(void)
 {
     SceCtrlData pad;
     GLuint texture = 0;
+    GLuint program;
 
     sceCtrlSetSamplingMode(SCE_CTRL_MODE_ANALOG);
     if (!vglInit(0x800000)) {
@@ -93,8 +199,21 @@ int main(void)
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 
+    program = create_cg_program();
+    if (program == 0) {
+        /* The color is a visible status indicator; fixed-function tests continue. */
+        glClearColor(0.28f, 0.015f, 0.025f, 1.0f);
+    }
+
     init_checker_texture();
     glGenTextures(1, &texture);
+    if (texture == 0) {
+        if (program != 0) {
+            glDeleteProgram(program);
+        }
+        sceKernelExitProcess(2);
+        return 2;
+    }
     glBindTexture(GL_TEXTURE_2D, texture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -102,12 +221,13 @@ int main(void)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 4, 4, 0, GL_RGBA,
                  GL_UNSIGNED_BYTE, s_checker);
-    if (texture == 0 || glGetError() != GL_NO_ERROR) {
-        if (texture != 0) {
-            glDeleteTextures(1, &texture);
+    if (glGetError() != GL_NO_ERROR) {
+        glDeleteTextures(1, &texture);
+        if (program != 0) {
+            glDeleteProgram(program);
         }
-        sceKernelExitProcess(2);
-        return 2;
+        sceKernelExitProcess(3);
+        return 3;
     }
 
     for (;;) {
@@ -116,11 +236,16 @@ int main(void)
             break;
         }
 
-        draw_probe_scene();
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        draw_colored_triangle(program);
+        draw_textured_depth_probe();
         vglSwapBuffers(GL_FALSE);
     }
 
     glDeleteTextures(1, &texture);
+    if (program != 0) {
+        glDeleteProgram(program);
+    }
     sceKernelExitProcess(0);
     return 0;
 }
