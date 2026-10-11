@@ -56,6 +56,11 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
 
 set(ICO_COMPAT_DIR "${CMAKE_SOURCE_DIR}/port/compat")
 set(ICO_GAME_DEFINITIONS ICO_HOST=1)
+if(ICO_INPUT_VITA)
+    # The Vita SDK owns some compatibility constants (including SCE_SEEK_*).
+    # Propagate this marker to every game translation unit using libmc.h.
+    list(APPEND ICO_GAME_DEFINITIONS ICO_VITA_SDK=1)
+endif()
 if(ICO_HEADLESS)
     list(APPEND ICO_GAME_DEFINITIONS ICO_HEADLESS=1)
 else()

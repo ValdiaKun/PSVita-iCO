@@ -56,7 +56,14 @@ enum {
     SCE_TRUNC = 0x0400
 };
 
+/* VitaSDK already declares these enum values in iofilemgr.h. Include
+   that SDK header before any consumer can pull it in indirectly (e.g. dirent.h)
+   and avoid redeclaring its identifiers in our host compatibility header. */
+#if defined(ICO_VITA_SDK)
+#include <psp2common/kernel/iofilemgr.h>
+#else
 enum { SCE_SEEK_SET = 0, SCE_SEEK_CUR = 1, SCE_SEEK_END = 2 };
+#endif
 
 /* the function numbers sceMcSync reports in *cmd */
 enum {

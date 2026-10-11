@@ -3,6 +3,9 @@
 # fumi/ios/mcard.c runs on it unchanged but for one ICO_HOST line, the
 # [audio] output hook (port/game/options.h ico_opt_output_card).
 add_library(ico_save STATIC mc_host.c)
+if(ICO_INPUT_VITA)
+    target_compile_definitions(ico_save PRIVATE ICO_VITA_SDK=1)
+endif()
 # host_config.h (saves=) and host_loop.h (the vsync callback list)
 target_include_directories(ico_save
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}"
