@@ -11,6 +11,7 @@
 #include <psp2/kernel/processmgr.h>
 #include <vitaGL.h>
 #include "vita_blend_reference.h"
+#include <stddef.h>
 #include <stdio.h>
 
 typedef struct ProbeVertex {
@@ -23,6 +24,14 @@ typedef struct BlendTestVertex {
     float texcoord[2];
 } BlendTestVertex;
 
+static const ProbeVertex s_triangle_vertices[] = {
+    {{-0.78f, -0.70f, 0.0f}, {0.95f, 0.20f, 0.16f, 1.0f}},
+    {{ 0.00f,  0.78f, 0.0f}, {0.20f, 0.85f, 0.45f, 1.0f}},
+    {{ 0.78f, -0.70f, 0.0f}, {0.20f, 0.45f, 1.00f, 1.0f}},
+};
+static const unsigned short s_triangle_indices[] = {0, 1, 2};
+static GLuint s_vertex_buffer;
+static GLuint s_index_buffer;
 static unsigned char s_checker[4 * 4 * 4];
 static FILE *s_log;
 
@@ -188,25 +197,83 @@ static GLuint create_cg_program(void)
     return program;
 }
 
+static int init_buffer_geometry(void)
+{
+    GLenum error;
+
+    glGenBuffers(1, &s_vertex_buffer);
+    glGenBuffers(1, &s_index_buffer);
+    if (s_vertex_buffer == 0 || s_index_buffer == 0) {
+        probe_log("vertex/index buffer allocation failed");
+        goto fail;
+    }
+
+    glBindBuffer(GL_ARRAY_BUFFER, s_vertex_buffer);
+    glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)sizeof(s_triangle_vertices),
+                 s_triangle_vertices, GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, s_index_buffer);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)sizeof(s_triangle_indices),
+                 s_triangle_indices, GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+    error = glGetError();
+    if (error != GL_NO_ERROR) {
+        FILE *out = s_log != NULL ? s_log : stderr;
+        fprintf(out, "vertex/index buffer upload failed: GL error 0x%04x\\n",
+                (unsigned int)error);
+        fflush(out);
+        goto fail;
+    }
+
+    probe_log("vertex/index buffer allocation and upload passed");
+    return 1;
+
+fail:
+    if (s_vertex_buffer != 0) {
+        glDeleteBuffers(1, &s_vertex_buffer);
+        s_vertex_buffer = 0;
+    }
+    if (s_index_buffer != 0) {
+        glDeleteBuffers(1, &s_index_buffer);
+        s_index_buffer = 0;
+    }
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    return 0;
+}
+
+static void release_buffer_geometry(void)
+{
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    if (s_vertex_buffer != 0) {
+        glDeleteBuffers(1, &s_vertex_buffer);
+        s_vertex_buffer = 0;
+    }
+    if (s_index_buffer != 0) {
+        glDeleteBuffers(1, &s_index_buffer);
+        s_index_buffer = 0;
+    }
+}
+
 static void draw_colored_triangle(GLuint program)
 {
-    static const ProbeVertex vertices[] = {
-        {{-0.78f, -0.70f, 0.0f}, {0.95f, 0.20f, 0.16f, 1.0f}},
-        {{ 0.00f,  0.78f, 0.0f}, {0.20f, 0.85f, 0.45f, 1.0f}},
-        {{ 0.78f, -0.70f, 0.0f}, {0.20f, 0.45f, 1.00f, 1.0f}},
-    };
-
-    if (program != 0) {
+    if (program != 0 && s_vertex_buffer != 0 && s_index_buffer != 0) {
         glUseProgram(program);
+        glBindBuffer(GL_ARRAY_BUFFER, s_vertex_buffer);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, s_index_buffer);
         glEnableVertexAttribArray(0);
         glEnableVertexAttribArray(1);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,
-                              sizeof(ProbeVertex), vertices[0].position);
-        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE,
-                              sizeof(ProbeVertex), vertices[0].color);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(ProbeVertex),
+                              (const void *)offsetof(ProbeVertex, position));
+        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(ProbeVertex),
+                              (const void *)offsetof(ProbeVertex, color));
+        glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, NULL);
         glDisableVertexAttribArray(1);
         glDisableVertexAttribArray(0);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
         glUseProgram(0);
         return;
     }
@@ -497,9 +564,6 @@ int main(void)
     }
 
     const int unorm_blend_ok = test_unorm_integer_blend_emulation();
-    if (program != 0 && !unorm_blend_ok) {
-        glClearColor(0.28f, 0.12f, 0.015f, 1.0f);
-    }
 
     /* Shader failure is shown by the red background, not misreported as a
      * texture-upload failure through a stale GL error flag. */
@@ -540,6 +604,13 @@ int main(void)
         }
     }
 
+    const int buffers_ok = program != 0 && init_buffer_geometry();
+    if (program != 0 && !buffers_ok) {
+        glClearColor(0.28f, 0.015f, 0.20f, 1.0f);
+    } else if (program != 0 && !unorm_blend_ok) {
+        glClearColor(0.28f, 0.12f, 0.015f, 1.0f);
+    }
+
     for (;;) {
         if (sceCtrlPeekBufferPositive(0, &pad, 1) > 0 &&
             (pad.buttons & SCE_CTRL_START) != 0) {
@@ -547,18 +618,20 @@ int main(void)
         }
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        draw_colored_triangle(program);
+        draw_colored_triangle(buffers_ok ? program : 0);
         draw_textured_depth_probe();
         vglSwapBuffers(GL_FALSE);
     }
 
     glDeleteTextures(1, &texture);
+    release_buffer_geometry();
     if (program != 0) {
         glDeleteProgram(program);
     }
-    const int exit_code = program == 0 ? 4 : !unorm_blend_ok ? 5 : 0;
-    probe_log(exit_code == 0 ? "Probe ended: Cg shader and byte-exact UNORM blend tests passed" :
+    const int exit_code = program == 0 ? 4 : !buffers_ok ? 6 : !unorm_blend_ok ? 5 : 0;
+    probe_log(exit_code == 0 ? "Probe ended: Cg shaders, vertex/index buffers, and byte-exact UNORM blend tests passed" :
               exit_code == 4 ? "Probe ended: Cg shader path failed; fixed-function fallback was used" :
+              exit_code == 6 ? "Probe ended: vertex/index buffer test failed" :
               "Probe ended: UNORM integer blend emulation failed");
     if (s_log != NULL) fclose(s_log);
     sceKernelExitProcess(exit_code);
