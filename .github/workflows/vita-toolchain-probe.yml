@@ -804,6 +804,7 @@ jobs:
           python3 tools/vita_source_audit.py \
             --root "$GITHUB_WORKSPACE" \
             --cc "$VITASDK/bin/arm-vita-eabi-gcc" \
+            --readelf "$VITASDK/bin/arm-vita-eabi-readelf" \
             --output-dir "$RUNNER_TEMP/vita-game-objects" \
             --report "$RUNNER_TEMP/vita-source-audit.json"
 
