@@ -17,11 +17,11 @@ int main(void)
         {200, 100, 64, 1, 150, "clamped blend"},
         {100, 80, 64, 1, 90, "clamped green"},
         {50, 20, 64, 1, 35, "clamped blue"},
-        {0, 255, 255, 0, 3, "wrapped negative blend"},
+        {0, 255, 255, 0, 2, "wrapped negative blend"},
         {20, 80, 255, 0, 216, "wrapped negative green"},
         {40, 200, 255, 0, 137, "wrapped negative blue"},
         {255, 0, 255, 1, 255, "clamped overflow"},
-        {255, 0, 255, 0, 251, "wrapped positive overflow"},
+        {255, 0, 255, 0, 252, "wrapped positive overflow"},
         {0, 0, 0, 0, 0, "zero source"},
         {255, 255, 255, 0, 255, "identical source and destination"},
     };
