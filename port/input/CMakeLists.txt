@@ -86,3 +86,10 @@ if(ICO_RUN_TESTS AND NOT CMAKE_CROSSCOMPILING)
     target_compile_options(vita_input_test PRIVATE ${ICO_SEMANTIC_OPTIONS} ${ICO_PORT_WARNINGS})
     add_test(NAME vita_input COMMAND vita_input_test)
 endif()
+
+# The game-side libpad bridge in ico2/fumi/ios/pad.c calls the host pad
+# implementation. Link it into the executable; this also carries the opt-in
+# native Vita controller adapter when ICO_INPUT_VITA is enabled.
+if(TARGET ico_pc)
+    target_link_libraries(ico_pc PRIVATE ico_input)
+endif()
