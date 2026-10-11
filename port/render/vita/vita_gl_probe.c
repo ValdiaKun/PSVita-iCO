@@ -10,6 +10,7 @@
 #include <psp2/ctrl.h>
 #include <psp2/kernel/processmgr.h>
 #include <vitaGL.h>
+#include <stdio.h>
 
 typedef struct ProbeVertex {
     float position[3];
@@ -17,6 +18,34 @@ typedef struct ProbeVertex {
 } ProbeVertex;
 
 static unsigned char s_checker[4 * 4 * 4];
+static FILE *s_log;
+
+static void probe_log(const char *message)
+{
+    if (s_log != NULL) {
+        fprintf(s_log, "%s\\n", message);
+        fflush(s_log);
+    }
+}
+
+static void probe_shader_log(const char *label, GLuint object, int is_program)
+{
+    GLchar info[768] = {0};
+    GLsizei length = 0;
+    if (is_program) {
+        glGetProgramInfoLog(object, (GLsizei)sizeof(info), &length, info);
+    } else {
+        glGetShaderInfoLog(object, (GLsizei)sizeof(info), &length, info);
+    }
+    if (length > 0) {
+        if (s_log != NULL) {
+            fprintf(s_log, "%s: %s\\n", label, info);
+            fflush(s_log);
+        }
+    } else {
+        probe_log(label);
+    }
+}
 
 static const char s_vertex_shader[] =
     "void main(\n"
@@ -63,9 +92,13 @@ static GLuint compile_cg_shader(GLenum type, const char *source)
     glCompileShader(shader);
     glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
     if (compiled != GL_TRUE) {
+        probe_shader_log(type == GL_CG_VERTEX_SHADER_EXT ? "Cg vertex compile failed" :
+                         "Cg fragment compile failed", shader, 0);
         glDeleteShader(shader);
         return 0;
     }
+    probe_log(type == GL_CG_VERTEX_SHADER_EXT ? "Cg vertex compile passed" :
+              "Cg fragment compile passed");
     return shader;
 }
 
@@ -103,9 +136,11 @@ static GLuint create_cg_program(void)
     glDeleteShader(fragment);
 
     if (linked != GL_TRUE) {
+        probe_shader_log("Cg program link failed", program, 1);
         glDeleteProgram(program);
         return 0;
     }
+    probe_log("Cg program link passed");
     return program;
 }
 
@@ -182,11 +217,16 @@ int main(void)
     GLuint texture = 0;
     GLuint program;
 
+    s_log = fopen("ux0:data/ico-vita-gl-probe.log", "wb");
+    probe_log("ICO VitaGL probe started");
     sceCtrlSetSamplingMode(SCE_CTRL_MODE_ANALOG);
     if (!vglInit(0x800000)) {
+        probe_log("vglInit failed");
+        if (s_log != NULL) fclose(s_log);
         sceKernelExitProcess(1);
         return 1;
     }
+    probe_log("vglInit passed");
 
     glViewport(0, 0, 960, 544);
     glClearColor(0.035f, 0.055f, 0.10f, 1.0f);
@@ -216,6 +256,8 @@ int main(void)
         if (program != 0) {
             glDeleteProgram(program);
         }
+        probe_log("glGenTextures failed");
+        if (s_log != NULL) fclose(s_log);
         sceKernelExitProcess(2);
         return 2;
     }
@@ -226,13 +268,21 @@ int main(void)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 4, 4, 0, GL_RGBA,
                  GL_UNSIGNED_BYTE, s_checker);
-    if (glGetError() != GL_NO_ERROR) {
-        glDeleteTextures(1, &texture);
+    {
+        GLenum texture_error = glGetError();
+        if (texture_error != GL_NO_ERROR) {
+            if (s_log != NULL) {
+                fprintf(s_log, "texture upload failed: GL error 0x%04x\\n", (unsigned int)texture_error);
+                fflush(s_log);
+            }
+            glDeleteTextures(1, &texture);
         if (program != 0) {
             glDeleteProgram(program);
         }
-        sceKernelExitProcess(3);
-        return 3;
+            if (s_log != NULL) fclose(s_log);
+            sceKernelExitProcess(3);
+            return 3;
+        }
     }
 
     for (;;) {
@@ -251,6 +301,9 @@ int main(void)
     if (program != 0) {
         glDeleteProgram(program);
     }
-    sceKernelExitProcess(0);
-    return 0;
+    probe_log(program != 0 ? "Probe ended: Cg shader path passed" :
+              "Probe ended: Cg shader path failed; fixed-function fallback was used");
+    if (s_log != NULL) fclose(s_log);
+    sceKernelExitProcess(program != 0 ? 0 : 4);
+    return program != 0 ? 0 : 4;
 }
