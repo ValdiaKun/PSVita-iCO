@@ -47,6 +47,15 @@ static void probe_shader_log(const char *label, GLuint object, int is_program)
     }
 }
 
+static void probe_log_gl_error(const char *stage)
+{
+    GLenum error = glGetError();
+    if (error != GL_NO_ERROR && s_log != NULL) {
+        fprintf(s_log, "%s: GL error 0x%04x\n", stage, (unsigned int)error);
+        fflush(s_log);
+    }
+}
+
 static const char s_vertex_shader[] =
     "void main(\n"
     "    float3 aPosition,\n"
@@ -94,6 +103,7 @@ static GLuint compile_cg_shader(GLenum type, const char *source)
     if (compiled != GL_TRUE) {
         probe_shader_log(type == GL_CG_VERTEX_SHADER_EXT ? "Cg vertex compile failed" :
                          "Cg fragment compile failed", shader, 0);
+        probe_log_gl_error("Cg shader compile");
         glDeleteShader(shader);
         return 0;
     }
@@ -137,6 +147,7 @@ static GLuint create_cg_program(void)
 
     if (linked != GL_TRUE) {
         probe_shader_log("Cg program link failed", program, 1);
+        probe_log_gl_error("Cg program link");
         glDeleteProgram(program);
         return 0;
     }
