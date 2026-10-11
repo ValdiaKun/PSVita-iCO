@@ -157,11 +157,11 @@ def main() -> int:
             architecture_output = header.stdout
             architecture_ok = (
                 header.returncode == 0
-                and re.search(r"^\\s*Class:\\s+ELF32\\s*$", header.stdout, re.MULTILINE) is not None
-                and re.search(r"^\\s*Machine:\\s+ARM\\s*$", header.stdout, re.MULTILINE) is not None
+                and re.search(r"^\s*Class:\s+ELF32\s*$", header.stdout, re.MULTILINE) is not None
+                and re.search(r"^\s*Machine:\s+ARM\s*$", header.stdout, re.MULTILINE) is not None
             )
             if not architecture_ok and header.returncode == 0:
-                architecture_output += "\\nExpected an ELF32 object for ARM."
+                architecture_output += "\nExpected an ELF32 object for ARM."
         ok = compile_ok and architecture_ok
         failure_output = run.stdout if not compile_ok else architecture_output
         results.append({
