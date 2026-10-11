@@ -7,6 +7,7 @@
  * It is not the ICO renderer and does not load game data.
  */
 #include <psp2/ctrl.h>
+#include <psp2/kernel/processmgr.h>
 #include <vitaGL.h>
 
 int main(void)
