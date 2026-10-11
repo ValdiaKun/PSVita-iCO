@@ -19,6 +19,7 @@
 #ifndef ICO_HOST_VITA_DATA_DIR
 #define ICO_HOST_VITA_DATA_DIR "ux0:data/ico-pc"
 #endif
+static int vita_data_dir(char *out, size_t size, int create);
 #endif
 
 /* ICO_HOST_FORCE_PORTABLE (the Android build of ico_pc, and
@@ -536,8 +537,13 @@ int ico_ini_load_layered(IcoIni *ini, const char *path)
 
         /* before the first look at the user folder: portable= says where it is */
         ico_host_set_portable(ico_host_portable_value(ico_ini_get(ini, "portable")));
+#ifdef ICO_HOST_VITA
+        if (vita_data_dir(dir, sizeof(dir), 0) == 0 &&
+            ico_path_join(toml_path, sizeof(toml_path), dir, "config.toml") == 0) {
+#else
         ico_host_pref_dir(dir, sizeof(dir));
         if (ico_path_join(toml_path, sizeof(toml_path), dir, "config.toml") == 0) {
+#endif
             t = ico_toml_load(toml_path);
         }
         for (i = 0; t != NULL && i < sizeof(ini_map) / sizeof(ini_map[0]); i++) {

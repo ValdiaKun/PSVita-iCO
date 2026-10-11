@@ -46,6 +46,13 @@ int main(void)
     CHECK(strcmp(joined, "app0:/data/ico.o2r") == 0);
     CHECK(ico_rmdir(data) == 0);
     CHECK(ico_host_ini_path(ini, sizeof(ini)) == 0);
+    {
+        IcoIni settings;
+        CHECK(ico_ini_load_layered(&settings, ini) == -1);
+    }
+    CHECK(ico_host_saves2_dir(joined, sizeof(joined)) == 0 && joined[0] == '\0');
+    CHECK(ico_host_saves_dir(joined, sizeof(joined)) == 0);
+    CHECK(strcmp(joined, "host_config_vita_test_dir/memcard") == 0);
     CHECK(ico_path_kind(data, NULL, NULL) < 0);
     if (failures != 0) {
         fprintf(stderr, "Vita host-config path regression: %d failures\n", failures);
