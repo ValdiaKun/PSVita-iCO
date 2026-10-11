@@ -277,7 +277,7 @@ static void draw_colored_triangle(GLuint program)
             s_indexed_draw_checked = 1;
             if (error != GL_NO_ERROR) {
                 FILE *out = s_log != NULL ? s_log : stderr;
-                fprintf(out, "indexed VBO draw failed: GL error 0x%04x\\n",
+                fprintf(out, "indexed VBO draw failed: GL error 0x%04x\n",
                         (unsigned int)error);
                 fflush(out);
                 s_indexed_draw_failed = 1;
@@ -643,10 +643,13 @@ int main(void)
     if (program != 0) {
         glDeleteProgram(program);
     }
-    const int exit_code = program == 0 ? 4 : !buffers_ok ? 6 :\n                          (!s_indexed_draw_checked || s_indexed_draw_failed) ? 7 :\n                          !unorm_blend_ok ? 5 : 0;
+    const int exit_code = program == 0 ? 4 : !buffers_ok ? 6 :
+                          (!s_indexed_draw_checked || s_indexed_draw_failed) ? 7 :
+                          !unorm_blend_ok ? 5 : 0;
     probe_log(exit_code == 0 ? "Probe ended: Cg shaders, vertex/index buffers, and byte-exact UNORM blend tests passed" :
               exit_code == 4 ? "Probe ended: Cg shader path failed; fixed-function fallback was used" :
-              exit_code == 6 ? "Probe ended: vertex/index buffer test failed" :
+              exit_code == 6 ? "Probe ended: vertex/index buffer allocation/upload failed" :
+              exit_code == 7 ? "Probe ended: indexed VBO draw failed or was not executed" :
               "Probe ended: UNORM integer blend emulation failed");
     if (s_log != NULL) fclose(s_log);
     sceKernelExitProcess(exit_code);
