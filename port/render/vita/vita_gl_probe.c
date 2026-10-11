@@ -32,6 +32,8 @@ static const ProbeVertex s_triangle_vertices[] = {
 static const unsigned short s_triangle_indices[] = {0, 1, 2};
 static GLuint s_vertex_buffer;
 static GLuint s_index_buffer;
+static int s_indexed_draw_checked;
+static int s_indexed_draw_failed;
 static unsigned char s_checker[4 * 4 * 4];
 static FILE *s_log;
 
@@ -270,6 +272,19 @@ static void draw_colored_triangle(GLuint program)
         glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(ProbeVertex),
                               (const void *)offsetof(ProbeVertex, color));
         glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, NULL);
+        if (!s_indexed_draw_checked) {
+            const GLenum error = glGetError();
+            s_indexed_draw_checked = 1;
+            if (error != GL_NO_ERROR) {
+                FILE *out = s_log != NULL ? s_log : stderr;
+                fprintf(out, "indexed VBO draw failed: GL error 0x%04x\\n",
+                        (unsigned int)error);
+                fflush(out);
+                s_indexed_draw_failed = 1;
+            } else {
+                probe_log("indexed VBO draw passed");
+            }
+        }
         glDisableVertexAttribArray(1);
         glDisableVertexAttribArray(0);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
@@ -628,7 +643,7 @@ int main(void)
     if (program != 0) {
         glDeleteProgram(program);
     }
-    const int exit_code = program == 0 ? 4 : !buffers_ok ? 6 : !unorm_blend_ok ? 5 : 0;
+    const int exit_code = program == 0 ? 4 : !buffers_ok ? 6 :\n                          (!s_indexed_draw_checked || s_indexed_draw_failed) ? 7 :\n                          !unorm_blend_ok ? 5 : 0;
     probe_log(exit_code == 0 ? "Probe ended: Cg shaders, vertex/index buffers, and byte-exact UNORM blend tests passed" :
               exit_code == 4 ? "Probe ended: Cg shader path failed; fixed-function fallback was used" :
               exit_code == 6 ? "Probe ended: vertex/index buffer test failed" :
