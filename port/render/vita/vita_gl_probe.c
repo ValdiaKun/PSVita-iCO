@@ -80,30 +80,30 @@ static const char s_fragment_shader[] =
 /* This tests the proposed RGBA8_UNORM fallback for the RHI's RGBA8_UINT
  * GS blend target. A=Cs, B=Cd, C=As, D=Cd in ((A-B)*C >> 7)+D. */
 static const char s_blend_vertex_shader[] =
-    "void main(\\n"
-    "    float2 aPosition,\\n"
-    "    float2 aTexcoord,\\n"
-    "    float4 out vPosition : POSITION,\\n"
-    "    float2 out vTexcoord : TEXCOORD0)\\n"
-    "{\\n"
-    "    vPosition = float4(aPosition, 0.0f, 1.0f);\\n"
-    "    vTexcoord = aTexcoord;\\n"
-    "}\\n";
+    "void main(\n"
+    "    float2 aPosition,\n"
+    "    float2 aTexcoord,\n"
+    "    float4 out vPosition : POSITION,\n"
+    "    float2 out vTexcoord : TEXCOORD0)\n"
+    "{\n"
+    "    vPosition = float4(aPosition, 0.0f, 1.0f);\n"
+    "    vTexcoord = aTexcoord;\n"
+    "}\n";
 
 static const char s_blend_fragment_shader[] =
-    "float4 main(\\n"
-    "    float2 vTexcoord : TEXCOORD0,\\n"
-    "    uniform sampler2D uSrc,\\n"
-    "    uniform sampler2D uDst,\\n"
-    "    uniform float uClampMode) : COLOR\\n"
-    "{\\n"
-    "    float4 cs = floor(tex2D(uSrc, vTexcoord) * 255.0f + 0.5f);\\n"
-    "    float4 cd = floor(tex2D(uDst, vTexcoord) * 255.0f + 0.5f);\\n"
-    "    float3 v = floor(((cs.rgb - cd.rgb) * cs.a) * (1.0f / 128.0f)) + cd.rgb;\\n"
-    "    if (uClampMode > 0.5f) v = clamp(v, 0.0f, 255.0f);\\n"
-    "    else v = v - floor(v * (1.0f / 256.0f)) * 256.0f;\\n"
-    "    return float4(v, cs.a) * (1.0f / 255.0f);\\n"
-    "}\\n";
+    "float4 main(\n"
+    "    float2 vTexcoord : TEXCOORD0,\n"
+    "    uniform sampler2D uSrc,\n"
+    "    uniform sampler2D uDst,\n"
+    "    uniform float uClampMode) : COLOR\n"
+    "{\n"
+    "    float4 cs = floor(tex2D(uSrc, vTexcoord) * 255.0f + 0.5f);\n"
+    "    float4 cd = floor(tex2D(uDst, vTexcoord) * 255.0f + 0.5f);\n"
+    "    float3 v = floor(((cs.rgb - cd.rgb) * cs.a) * (1.0f / 128.0f)) + cd.rgb;\n"
+    "    if (uClampMode > 0.5f) v = clamp(v, 0.0f, 255.0f);\n"
+    "    else v = v - floor(v * (1.0f / 256.0f)) * 256.0f;\n"
+    "    return float4(v, cs.a) * (1.0f / 255.0f);\n"
+    "}\n";
 
 static void init_checker_texture(void)
 {
