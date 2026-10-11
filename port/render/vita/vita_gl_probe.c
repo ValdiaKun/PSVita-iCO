@@ -10,6 +10,7 @@
 #include <psp2/ctrl.h>
 #include <psp2/kernel/processmgr.h>
 #include <vitaGL.h>
+#include "vita_blend_reference.h"
 #include <stdio.h>
 
 typedef struct ProbeVertex {
@@ -273,12 +274,11 @@ static int test_unorm_integer_blend_emulation(void)
         unsigned char src[4];
         unsigned char dst[4];
         float clamp_mode;
-        unsigned char expected[4];
         const char *name;
     } cases[] = {
-        {{200, 100,  50,  64}, {100, 80,  20, 255}, 1.0f, {150,  90,  35,  64}, "clamped blend"},
-        {{  0,  20,  40, 255}, {255, 80, 200, 255}, 0.0f, {  3, 216, 137, 255}, "wrapped negative blend"},
-        {{255, 255, 255, 255}, {  0,  0,   0, 255}, 1.0f, {255, 255, 255, 255}, "clamped overflow"},
+        {{200, 100,  50,  64}, {100, 80,  20, 255}, 1.0f, "clamped blend"},
+        {{  0,  20,  40, 255}, {255, 80, 200, 255}, 0.0f, "wrapped negative blend"},
+        {{255, 255, 255, 255}, {  0,  0,   0, 255}, 1.0f, "clamped overflow"},
     };
     GLuint textures[3] = {0, 0, 0};
     GLuint framebuffer = 0;
@@ -381,11 +381,18 @@ static int test_unorm_integer_blend_emulation(void)
             ok = 0;
             break;
         }
+        unsigned char expected[4];
+        for (unsigned int channel = 0; channel < 3; ++channel) {
+            expected[channel] = vita_blend_reference_channel(
+                cases[i].src[channel], cases[i].dst[channel], cases[i].src[3],
+                cases[i].clamp_mode > 0.5f);
+        }
+        expected[3] = cases[i].src[3];
         for (unsigned int channel = 0; channel < 4; ++channel) {
-            if (actual[channel] != cases[i].expected[channel]) {
+            if (actual[channel] != expected[channel]) {
                 FILE *out = s_log != NULL ? s_log : stderr;
                 fprintf(out, "%s mismatch channel %u: expected %u, got %u\n",
-                        cases[i].name, channel, (unsigned int)cases[i].expected[channel],
+                        cases[i].name, channel, (unsigned int)expected[channel],
                         (unsigned int)actual[channel]);
                 fflush(out);
                 ok = 0;

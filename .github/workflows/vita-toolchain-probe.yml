@@ -808,6 +808,16 @@ jobs:
             -o "$RUNNER_TEMP/vita_input_test"
           "$RUNNER_TEMP/vita_input_test"
 
+      - name: Build and run vitaGL blend arithmetic regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$GITHUB_WORKSPACE/port/render/vita"
+          cc -std=gnu11 -Wall -Wextra -Werror -O2 \
+            "$root/test/vita_blend_reference_test.c" \
+            -o "$RUNNER_TEMP/vita_blend_reference_test"
+          "$RUNNER_TEMP/vita_blend_reference_test"
+
       - name: Build and run Vita host-config path regression
         shell: bash
         run: |
