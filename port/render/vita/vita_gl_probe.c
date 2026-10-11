@@ -77,7 +77,10 @@ int main(void)
     GLuint texture = 0;
 
     sceCtrlSetSamplingMode(SCE_CTRL_MODE_ANALOG);
-    vglInit(0x800000);
+    if (!vglInit(0x800000)) {
+        sceKernelExitProcess(1);
+        return 1;
+    }
 
     glViewport(0, 0, 960, 544);
     glClearColor(0.035f, 0.055f, 0.10f, 1.0f);
@@ -99,6 +102,13 @@ int main(void)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 4, 4, 0, GL_RGBA,
                  GL_UNSIGNED_BYTE, s_checker);
+    if (texture == 0 || glGetError() != GL_NO_ERROR) {
+        if (texture != 0) {
+            glDeleteTextures(1, &texture);
+        }
+        sceKernelExitProcess(2);
+        return 2;
+    }
 
     for (;;) {
         if (sceCtrlPeekBufferPositive(0, &pad, 1) > 0 &&
