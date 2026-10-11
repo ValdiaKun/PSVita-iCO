@@ -686,6 +686,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Audit HLSL features requiring a Vita shader implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 "$GITHUB_WORKSPACE/port/shaders/test/vita_shader_audit.py" \
+            --json-out "$RUNNER_TEMP/vita-shader-audit.json"
+
+      - name: Upload Vita shader compatibility inventory
+        uses: actions/upload-artifact@v4
+        with:
+          name: vita-shader-compatibility-inventory
+          path: ${{ runner.temp }}/vita-shader-audit.json
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Confirm desktop diagnostic implementation is not Vita-compilable unchanged
         shell: bash
         run: |
