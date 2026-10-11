@@ -23,7 +23,7 @@ static FILE *s_log;
 static void probe_log(const char *message)
 {
     if (s_log != NULL) {
-        fprintf(s_log, "%s\\n", message);
+        fprintf(s_log, "%s\n", message);
         fflush(s_log);
     }
 }
@@ -39,7 +39,7 @@ static void probe_shader_log(const char *label, GLuint object, int is_program)
     }
     if (length > 0) {
         if (s_log != NULL) {
-            fprintf(s_log, "%s: %s\\n", label, info);
+            fprintf(s_log, "%s: %s\n", label, info);
             fflush(s_log);
         }
     } else {
@@ -272,13 +272,13 @@ int main(void)
         GLenum texture_error = glGetError();
         if (texture_error != GL_NO_ERROR) {
             if (s_log != NULL) {
-                fprintf(s_log, "texture upload failed: GL error 0x%04x\\n", (unsigned int)texture_error);
+                fprintf(s_log, "texture upload failed: GL error 0x%04x\n", (unsigned int)texture_error);
                 fflush(s_log);
             }
             glDeleteTextures(1, &texture);
-        if (program != 0) {
-            glDeleteProgram(program);
-        }
+            if (program != 0) {
+                glDeleteProgram(program);
+            }
             if (s_log != NULL) fclose(s_log);
             sceKernelExitProcess(3);
             return 3;
