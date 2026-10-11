@@ -332,6 +332,10 @@ jobs:
               command = entry.get("command")
               if not command or "ICO_HEADLESS=1" not in command:
                   raise SystemExit(f"host source is not configured for the headless platform: {wanted.name}")
+              if wanted.name == "host_loop.c":
+                  for definition in ("ICO_HOST_VITA=1", "ICO_INPUT_VITA=1"):
+                      if definition not in command:
+                          raise SystemExit(f"{definition} is missing from Vita host loop compile")
               print("Compile host entry:", command, flush=True)
               subprocess.run(shlex.split(command), cwd=entry["directory"], check=True)
               print(f"Vita host-source compile passed: {wanted.name}", flush=True)
@@ -340,6 +344,10 @@ jobs:
           # dependency integration, not just standalone object compilation.
           cmake --build "$build" --target ico_platform --parallel 2
           cmake --build "$build" --target ico_sndn2 --parallel 2
+          cmake --build "$build" --target ico_input --parallel 2
+          # Confirm the executable link graph now includes the libpad bridge
+          # that provides scePadRead and the native Vita adapter.
+          grep -F "libico_input.a" "$build/CMakeFiles/ico_pc.dir/link.txt"
 
       - name: Build and validate a minimal Vita VPK
         shell: bash
