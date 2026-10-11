@@ -60,6 +60,42 @@ def main() -> int:
             if re.search(pattern, text)
         )
 
+    # Resolve quoted local includes so an entry point records features in
+    # its source and transitive include files. This is deliberately an
+    # over-approximation: included helpers may not all be reachable from every
+    # entry point, but no dependency is silently omitted.
+    include_pattern = re.compile(r'^\\s*#\\s*include\\s+"([^"]+)"', re.MULTILINE)
+    include_graph = {
+        filename: [match.group(1) for match in include_pattern.finditer(text)]
+        for filename, text in source_text.items()
+    }
+    unresolved = sorted({
+        f"{filename} -> {include}"
+        for filename, includes in include_graph.items()
+        for include in includes
+        if include not in source_text
+    })
+    if unresolved:
+        raise SystemExit("unresolved local shader includes:\\n- " + "\\n- ".join(unresolved))
+
+    def transitive_includes(filename: str, seen: set[str] | None = None) -> list[str]:
+        seen = set() if seen is None else seen
+        for include in include_graph[filename]:
+            if include not in seen:
+                seen.add(include)
+                transitive_includes(include, seen)
+        return sorted(seen)
+
+    include_dependencies = {filename: transitive_includes(filename) for filename in source_text}
+    include_features = {
+        filename: sorted({
+            feature
+            for include in include_dependencies[filename]
+            for feature in inventory[include]
+        })
+        for filename in source_text
+    }
+
     # Keep the per-entry-point inventory aligned with the actual DXC build
     # registration list, including the explicitly declared no-dual-source
     # variants. This makes the conversion workload auditable, not just a list
@@ -97,7 +133,10 @@ def main() -> int:
                     "entry": value,
                     "stage": stage,
                     "defines": defines,
-                    "features": inventory[source],
+                    "potential_features": sorted(set(inventory[source]) | set(include_features[source])),
+                    "direct_source_features": inventory[source],
+                    "transitive_include_features": include_features[source],
+                    "includes": include_dependencies[source],
                 })
         else:
             entry_points.append({
@@ -106,7 +145,10 @@ def main() -> int:
                 "entry": entry,
                 "stage": stage,
                 "defines": defines,
-                "features": inventory.get(source, []),
+                "potential_features": sorted(set(inventory.get(source, [])) | set(include_features.get(source, []))),
+                "direct_source_features": inventory.get(source, []),
+                "transitive_include_features": include_features.get(source, []),
+                "includes": include_dependencies.get(source, []),
             })
 
     missing = []
@@ -126,6 +168,15 @@ def main() -> int:
         raise SystemExit("Vita shader registration audit missing expected entries: " + ", ".join(missing_entries))
     if len(entry_points) < 50:
         raise SystemExit(f"unexpectedly small shader entry-point inventory: {len(entry_points)}")
+    entries_by_name = {entry["name"]: entry for entry in entry_points}
+    for name, feature in (
+        ("sprite_ps", "dual_source_output"),
+        ("vu_skin_vs", "storage_buffer"),
+    ):
+        if feature not in entries_by_name[name]["transitive_include_features"]:
+            raise SystemExit(
+                f"{name} no longer inherits expected shader feature {feature} from includes"
+            )
 
     report = {
         "schema_version": 1,
@@ -134,6 +185,7 @@ def main() -> int:
         "entry_point_count": len(entry_points),
         "feature_patterns": FEATURE_PATTERNS,
         "shaders": inventory,
+        "include_dependencies": include_dependencies,
         "entry_points": entry_points,
     }
     counts = {
@@ -151,6 +203,7 @@ def main() -> int:
             print(f"  {feature}: {count} file(s)")
     print("Known blocker markers detected: " + ", ".join(EXPECTED_FEATURES))
     print("Entry-point registration checks passed: " + ", ".join(sorted(expected_entries)))
+    print("Transitive include feature checks passed: sprite_ps/dual_source_output, vu_skin_vs/storage_buffer")
     print("NOTE: this is a static inventory; it does not compile or validate Vita shaders.")
 
     if args.json_out:
