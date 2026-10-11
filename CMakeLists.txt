@@ -23,7 +23,7 @@ option(ICO_INPUT_VITA "Build the native PlayStation Vita controller adapter and 
 # Vita toolchain drift into that path and fail later on unrelated desktop
 # dependencies; until a Vita display loop and RHI backend exist, only the
 # headless configuration is a supported compile-audit configuration.
-if(CMAKE_SYSTEM_NAME STREQUAL "Vita" AND NOT ICO_HEADLESS)
+if((CMAKE_SYSTEM_NAME STREQUAL "Vita" OR CMAKE_C_COMPILER MATCHES "arm-vita-eabi-gcc") AND NOT ICO_HEADLESS)
     message(FATAL_ERROR
         "Native Vita windowing/rendering is not implemented. Configure with "
         "-DICO_HEADLESS=ON for compile-only platform checks; this is not a "
