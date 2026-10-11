@@ -411,7 +411,7 @@ jobs:
           while IFS= read -r startup; do
             echo "VitaSDK startup ABI sample: $startup"
             "$VITASDK/bin/arm-vita-eabi-readelf" -A "$startup" | grep -F "Tag_ABI_enum_size" || true
-          done < <(find "$VITASDK/arm-vita-eabi" -type f \\( -name 'crt0.o' -o -name 'crtbegin.o' -o -name 'crtbeginS.o' \\) -print | sort)
+          done < <(find "$VITASDK/arm-vita-eabi" -type f \( -name 'crt0.o' -o -name 'crtbegin.o' -o -name 'crtbeginS.o' \) -print | sort)
           test -s "$build/ico_pc"
           file "$build/ico_pc"
           header="$("$VITASDK/bin/arm-vita-eabi-readelf" -h "$build/ico_pc")"
