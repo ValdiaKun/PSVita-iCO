@@ -345,6 +345,10 @@ jobs:
           cmake --build "$build" --target ico_platform --parallel 2
           cmake --build "$build" --target ico_sndn2 --parallel 2
           cmake --build "$build" --target ico_input --parallel 2
+          # Compile the complete game through CMake's real object-library graph,
+          # not only through the parallel source-audit script.
+          cmake --build "$build" --target ico_game --parallel 2
+          test -s "$build/libico_game.a"
           # Confirm the executable link graph now includes the libpad bridge
           # that provides scePadRead and the native Vita adapter.
           grep -F "libico_input.a" "$build/CMakeFiles/ico_pc.dir/link.txt"

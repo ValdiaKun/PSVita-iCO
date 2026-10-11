@@ -1402,7 +1402,11 @@ static void setup_pad(const Args *a, const IcoIni *ini, const char *exe_dir)
                 ico_pad_script_count());
         record_check(path);
     } else {
+#ifdef ICO_HOST_VITA
+        fprintf(stderr, "ico_pc: no pad script: using the native Vita controller\n");
+#else
         fprintf(stderr, "ico_pc: no pad script: no controller\n");
+#endif
     }
 }
 

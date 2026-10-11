@@ -167,7 +167,7 @@ def main() -> int:
         results.append({
             "source": rel,
             "ok": ok,
-            "compile_returncode": run.returncode,
+            "returncode": run.returncode,
             "architecture_ok": architecture_ok,
             "output": "" if ok else failure_output[-6000:],
         })
