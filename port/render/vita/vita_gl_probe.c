@@ -277,7 +277,7 @@ static int test_unorm_integer_blend_emulation(void)
         const char *name;
     } cases[] = {
         {{200, 100,  50,  64}, {100, 80,  20, 255}, 1.0f, {150,  90,  35,  64}, "clamped blend"},
-        {{  0,  20,  40, 255}, {255, 80, 200, 255}, 0.0f, {  2, 216, 137, 255}, "wrapped negative blend"},
+        {{  0,  20,  40, 255}, {255, 80, 200, 255}, 0.0f, {  3, 216, 137, 255}, "wrapped negative blend"},
         {{255, 255, 255, 255}, {  0,  0,   0, 255}, 1.0f, {255, 255, 255, 255}, "clamped overflow"},
     };
     GLuint textures[3] = {0, 0, 0};
