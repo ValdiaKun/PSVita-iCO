@@ -17,6 +17,9 @@
 #include "clock.h"
 #include "sched.h"
 #include "trace_host.h"
+#ifdef ICO_HOST_VITA
+#include "../input/input_vita.h"
+#endif
 
 /* The game's main (common/src/main.c, renamed by CMakeLists.txt) and its
    video mode word: systemStatus[0] is 0 for NTSC (60 Hz), 1 for PAL. */
@@ -56,6 +59,14 @@ void ico_host_init(void)
         fprintf(stderr, "ico_pc: cannot allocate the EE RAM arena\n");
         exit(1);
     }
+#ifdef ICO_HOST_VITA
+    /* The game reads this adapter through the existing libpad bridge. */
+    if (ico_input_vita_init() != 0) {
+        fprintf(stderr, "ico_pc: cannot initialize the Vita controller\n");
+        exit(1);
+    }
+    ico_host_at_shutdown(ico_input_vita_shutdown);
+#endif
     ico_diag_name_func((void *)boot_main, "boot (the game's main)");
     /* the SPU2 and the SNDN2DRV host, before the game binds to it */
     ico_audio_host_init();
@@ -94,6 +105,11 @@ void ico_host_step(void)
     ico_fpenv_sim_enter();
     ico_sched_vsync_advance();
     vsyncs++;
+#ifdef ICO_HOST_VITA
+    /* Sample before the game's vblank handler and scheduled Main tick. A
+       failed sceCtrl read clears the virtual pad inside the adapter. */
+    (void)ico_input_vita_update();
+#endif
     ico_vsync(field);
     field ^= 1;
     ico_host_run_vsync_hooks();
