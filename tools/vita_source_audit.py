@@ -62,6 +62,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, required=True)
     parser.add_argument("--cc", required=True, help="Vita ARM C compiler")
+    parser.add_argument("--readelf", required=True, help="Vita ARM readelf for validating every object")
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
     args = parser.parse_args()
@@ -145,19 +146,39 @@ def main() -> int:
         cmd.extend(["-c", str(source), "-o", str(obj)])
         run = subprocess.run(cmd, text=True, stdout=subprocess.PIPE,
                              stderr=subprocess.STDOUT, check=False)
-        ok = run.returncode == 0
+        compile_ok = run.returncode == 0
+        architecture_output = ""
+        architecture_ok = False
+        if compile_ok:
+            header = subprocess.run(
+                [args.readelf, "-h", str(obj)], text=True, stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT, check=False,
+            )
+            architecture_output = header.stdout
+            architecture_ok = (
+                header.returncode == 0
+                and re.search(r"^\\s*Class:\\s+ELF32\\s*$", header.stdout, re.MULTILINE) is not None
+                and re.search(r"^\\s*Machine:\\s+ARM\\s*$", header.stdout, re.MULTILINE) is not None
+            )
+            if not architecture_ok and header.returncode == 0:
+                architecture_output += "\\nExpected an ELF32 object for ARM."
+        ok = compile_ok and architecture_ok
+        failure_output = run.stdout if not compile_ok else architecture_output
         results.append({
             "source": rel,
             "ok": ok,
-            "returncode": run.returncode,
-            "output": "" if ok else run.stdout[-6000:],
+            "compile_returncode": run.returncode,
+            "architecture_ok": architecture_ok,
+            "output": "" if ok else failure_output[-6000:],
         })
         print(f"[{index:03d}/{len(sources):03d}] {'OK' if ok else 'FAIL'} {rel}", flush=True)
         if not ok:
-            print(run.stdout[-3000:], file=sys.stderr, flush=True)
+            print(failure_output[-3000:], file=sys.stderr, flush=True)
 
     report = {
         "compiler": args.cc,
+        "readelf": args.readelf,
+        "object_validation": "ELF32/ARM required for every successful translation unit",
         "source_count": len(sources),
         "ee_only_excluded_count": len(ee_only),
         "passed": sum(item["ok"] for item in results),
