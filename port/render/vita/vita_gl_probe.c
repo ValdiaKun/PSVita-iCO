@@ -211,10 +211,10 @@ static int init_buffer_geometry(void)
     }
 
     glBindBuffer(GL_ARRAY_BUFFER, s_vertex_buffer);
-    glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)sizeof(s_triangle_vertices),
+    glBufferData(GL_ARRAY_BUFFER, (GLsizei)sizeof(s_triangle_vertices),
                  s_triangle_vertices, GL_STATIC_DRAW);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, s_index_buffer);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)sizeof(s_triangle_indices),
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizei)sizeof(s_triangle_indices),
                  s_triangle_indices, GL_STATIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
