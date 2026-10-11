@@ -37,20 +37,20 @@ static void draw_probe_scene(void)
     glDisable(GL_BLEND);
     glColor4f(0.95f, 0.20f, 0.16f, 1.0f);
     glBegin(GL_TRIANGLES);
-    glVertex3f(480.0f, 76.0f, 0.7f);
+    glVertex3f(480.0f, 76.0f, -0.7f);
     glColor4f(0.20f, 0.85f, 0.45f, 1.0f);
-    glVertex3f(710.0f, 420.0f, 0.7f);
+    glVertex3f(710.0f, 420.0f, -0.7f);
     glColor4f(0.20f, 0.45f, 1.0f, 1.0f);
-    glVertex3f(250.0f, 420.0f, 0.7f);
+    glVertex3f(250.0f, 420.0f, -0.7f);
     glEnd();
 
     /* Draw a solid background quad, then a nearer alpha-textured quad. */
     glColor4f(0.10f, 0.35f, 0.85f, 1.0f);
     glBegin(GL_TRIANGLE_STRIP);
-    glVertex3f(80.0f, 170.0f, 0.3f);
-    glVertex3f(400.0f, 170.0f, 0.3f);
-    glVertex3f(80.0f, 490.0f, 0.3f);
-    glVertex3f(400.0f, 490.0f, 0.3f);
+    glVertex3f(80.0f, 170.0f, -0.3f);
+    glVertex3f(400.0f, 170.0f, -0.3f);
+    glVertex3f(80.0f, 490.0f, -0.3f);
+    glVertex3f(400.0f, 490.0f, -0.3f);
     glEnd();
 
     glEnable(GL_TEXTURE_2D);
@@ -59,13 +59,13 @@ static void draw_probe_scene(void)
     glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
     glBegin(GL_TRIANGLE_STRIP);
     glTexCoord2f(0.0f, 0.0f);
-    glVertex3f(110.0f, 200.0f, -0.2f);
+    glVertex3f(110.0f, 200.0f, 0.2f);
     glTexCoord2f(1.0f, 0.0f);
-    glVertex3f(370.0f, 200.0f, -0.2f);
+    glVertex3f(370.0f, 200.0f, 0.2f);
     glTexCoord2f(0.0f, 1.0f);
-    glVertex3f(110.0f, 460.0f, -0.2f);
+    glVertex3f(110.0f, 460.0f, 0.2f);
     glTexCoord2f(1.0f, 1.0f);
-    glVertex3f(370.0f, 460.0f, -0.2f);
+    glVertex3f(370.0f, 460.0f, 0.2f);
     glEnd();
     glDisable(GL_BLEND);
     glDisable(GL_TEXTURE_2D);
