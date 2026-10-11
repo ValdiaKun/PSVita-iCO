@@ -64,7 +64,7 @@ def main() -> int:
     # its source and transitive include files. This is deliberately an
     # over-approximation: included helpers may not all be reachable from every
     # entry point, but no dependency is silently omitted.
-    include_pattern = re.compile(r'^\\s*#\\s*include\\s+"([^"]+)"', re.MULTILINE)
+    include_pattern = re.compile(r'^\s*#\s*include\s+"([^"]+)"', re.MULTILINE)
     include_graph = {
         filename: [match.group(1) for match in include_pattern.finditer(text)]
         for filename, text in source_text.items()
@@ -76,7 +76,7 @@ def main() -> int:
         if include not in source_text
     })
     if unresolved:
-        raise SystemExit("unresolved local shader includes:\\n- " + "\\n- ".join(unresolved))
+        raise SystemExit("unresolved local shader includes:\n- " + "\n- ".join(unresolved))
 
     def transitive_includes(filename: str, seen: set[str] | None = None) -> list[str]:
         seen = set() if seen is None else seen
